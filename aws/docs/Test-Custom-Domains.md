@@ -1,19 +1,17 @@
-# Test the custom domain over the VPN
+# Test the custom domain
 
 [← Back to README](../README.md)
 
-End-to-end checks for a **private-only cluster** (`public_link = false`) once the
-custom domain is enabled: the domain resolves, the Client VPN carries traffic
-into the private HVN, HCP Vault serves a valid Let's Encrypt certificate for the
-custom domain, and the Vault API answers on it.
+End-to-end checks for a private cluster once the custom domain is enabled: the
+domain resolves, the Client VPN reaches the private HVN, Vault serves a valid
+Let's Encrypt certificate, and the API answers on it.
 
-Run this **after** [Enable-Custom-Domains.md](Enable-Custom-Domains.md) reports
-`is_enabled: true` and its operation is `DONE`. For pre-enable readiness checks
-see [validate-custom-domain-setup-with-hvn-peering-and-vpn-only.md](validate-custom-domain-setup-with-hvn-peering-and-vpn-only.md).
+Run this after [Enable-Custom-Domains.md](Enable-Custom-Domains.md) reports
+`is_enabled: true` and its operation is `DONE`. For the pre-enable checklist see
+[Validate-Resources-Required-For-Custom-Domains.md](Validate-Resources-Required-For-Custom-Domains.md).
 
-> **Public clusters** (`public_link = true`) skip section 1 and every VPN check —
-> the endpoint is reachable from anywhere. Sections 2–7 still apply; run them from
-> any machine.
+On a public cluster (`public_link = true`), skip section 1 and every VPN check;
+the endpoint is reachable from anywhere. Sections 2 to 7 apply as written.
 
 Collect the values the checks use:
 
@@ -121,13 +119,14 @@ aws ec2 describe-client-vpn-connections --region "$AWS_REGION" \
   --client-vpn-endpoint-id "$VPN_EP" \
   --query "Connections[?Status.Code=='active'].[CommonName, ClientIp]" --output table   # your live session
 
-curl -sS "https://${HCP_API_ADDRESS}/vault/2020-11-25/organizations/${HCP_ORGANIZATION_ID}/projects/${HCP_PROJECT_ID}/clusters/$(terraform output -raw vault_cluster_id)" \
-  -H "Authorization: Bearer ${HCP_API_TOKEN}" \
+curl -sS "https://${HCP_API_ADDRESS}/vault/2020-11-25/organizations/${HCP_ORGANIZATION_ID}/projects/${HCP_PROJECT_ID}/clusters/${HCP_VAULT_ID}" \
+  -H "Authorization: Bearer $(hcp auth print-access-token)" \
   | jq '.cluster.config.network_config.custom_domain_config, .cluster.dns_names'
 ```
 
-(The `HCP_*` variables come from [Enable-Custom-Domains.md](Enable-Custom-Domains.md)
-step 1.)
+(The `HCP_*` variables — `HCP_API_ADDRESS`, `HCP_ORGANIZATION_ID`,
+`HCP_PROJECT_ID`, `HCP_VAULT_ID` — are set in
+[Enable-Custom-Domains.md](Enable-Custom-Domains.md) steps 1–2.)
 
 ## Quick all-in-one
 
@@ -145,16 +144,16 @@ domain.
 
 ## Troubleshooting
 
-| Symptom | Likely cause | Fix |
-|---|---|---|
-| `dig` CNAME empty | Route53 records not applied | re-run `terraform apply`; check `terraform output vault_cname_fqdn` |
-| CNAME resolves but `dig +short` returns a public IP | VPN not connected / split-tunnel DNS not applied | reconnect `vault-client-vpn`; reconnect after Wi-Fi changes |
-| `nc` fails to both custom domain and private hostname | VPN down, peering not `active`, or subnet route missing | section 7; re-check `terraform output hvn_peering_state` and `hvn_peering_aws_route_table_ids` |
-| `nc` to private hostname works, custom domain fails | CNAME wrong or not propagated | section 2; wait for the 300s TTL |
-| `curl` TLS error, or issuer is `vpn-ca.hcp.vault` / an HCP CA | custom-domain certificate not issued yet | re-check [Enable-Custom-Domains.md](Enable-Custom-Domains.md) step 5; confirm `_acme-challenge` resolves publicly; wait for the operation to reach `DONE` |
-| HCP operation stuck or errored | ACME DNS-01 challenge cannot resolve | `dig +short CNAME "$CHALLENGE_FQDN" @8.8.8.8`; then re-send the PATCH |
-| health returns 429 / 473 / 501 | standby / perf-standby / DR node — not an error | confirm with `/v1/sys/seal-status` |
-| `vault login` only works with `-tls-skip-verify` | `VAULT_ADDR` not on the custom domain, or the cert check in section 4 fails | set `VAULT_ADDR` to the custom domain; re-run section 4 |
+| Symptom                                                       | Likely cause                                                                | Fix                                                                                                                                                                                   |
+|---------------------------------------------------------------|-----------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `dig` CNAME empty                                             | Route53 records not applied                                                 | re-run `terraform apply`; check `terraform output vault_cname_fqdn`                                                                                                                   |
+| CNAME resolves but `dig +short` returns a public IP           | VPN not connected / split-tunnel DNS not applied                            | reconnect `vault-client-vpn`; reconnect after Wi-Fi changes                                                                                                                           |
+| `nc` fails to both custom domain and private hostname         | VPN down, peering not `active`, or subnet route missing                     | section 7; re-check `terraform output hvn_peering_state` and `hvn_peering_aws_route_table_ids`                                                                                        |
+| `nc` to private hostname works, custom domain fails           | CNAME wrong or not propagated                                               | section 2; wait for the 300s TTL                                                                                                                                                      |
+| `curl` TLS error, or issuer is `vpn-ca.hcp.vault` / an HCP CA | custom-domain certificate not issued yet                                    | re-check [Enable-Custom-Domains.md](Enable-Custom-Domains.md) → *Track the certificate workflow*; confirm `_acme-challenge` resolves publicly; wait for the operation to reach `DONE` |
+| HCP operation stuck or errored                                | ACME DNS-01 challenge cannot resolve                                        | `dig +short CNAME "$CHALLENGE_FQDN" @8.8.8.8`; then re-send the PATCH                                                                                                                 |
+| health returns 429 / 473 / 501                                | standby / perf-standby / DR node — not an error                             | confirm with `/v1/sys/seal-status`                                                                                                                                                    |
+| `vault login` only works with `-tls-skip-verify`              | `VAULT_ADDR` not on the custom domain, or the cert check in section 4 fails | set `VAULT_ADDR` to the custom domain; re-run section 4                                                                                                                               |
 
 When everything passes and you are done, tear it all down with
 [Cleanup.md](Cleanup.md).
