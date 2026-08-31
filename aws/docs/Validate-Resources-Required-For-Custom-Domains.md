@@ -1,19 +1,17 @@
-# Validate the setup before enabling the custom domain
+# Validate the resources required for custom domains
 
 [← Back to README](../README.md)
 
-Run this **after `terraform apply` succeeds** and **before** you fire the HCP API
-call that enables the custom domain. Every check is read-only. When a section's
-Go / No-Go table is green, HCP has what it needs to request the Let's Encrypt
-certificate and serve it on `vault.<zone>`.
+Run this after `terraform apply` succeeds and before you fire the enable API.
+Every check is read-only. When a section's checklist is green, HCP has what it
+needs to request the Let's Encrypt certificate and serve it on `vault.<zone>`.
 
 Pick the section that matches your cluster:
 
-- **[Section A. Public clusters](#section-a-public-clusters)** — `public_link = true`
-- **[Section B. Private-only clusters (HVN peering and VPN)](#section-b-private-only-clusters-hvn-peering-and-vpn)** —
-  `public_link = false`, `enable_vpn = true`, and an HVN peering created or
-  adopted with `manage_peering_routes = true`
-
+- [Section A. Public clusters](#section-a-public-clusters) — `public_link = true`
+- [Section B. Private clusters](#section-b-private-clusters) — `public_link = false`,
+  `enable_vpn = true`, and an HVN peering created or adopted with
+  `manage_peering_routes = true`
 
 ## Before you start
 
@@ -22,7 +20,7 @@ Pick the section that matches your cluster:
 - Shell configured per [Prepare-Environment.md](Prepare-Environment.md) — AWS
   credentials, and `HCP_API_ADDRESS` plus a fresh `HCP_API_TOKEN`.
 - Your project is on the `hcpv-custom-domain-enabled` LaunchDarkly flag
-  ([Prerequisites.md](Prerequisites.md#you-must-add-your-project-to-the-following-ld-flags)).
+  ([Prerequisites.md](Prerequisites.md#launchdarkly-flags)).
 
 Collect the values every section uses:
 
@@ -110,7 +108,7 @@ curl -sS "https://${HCP_API_ADDRESS}/vault/2020-11-25/organizations/${HCP_ORGANI
 # expect "not set" or is_enabled=false — the domain must not already be enabled
 ```
 
-### Section A — Go / No-Go
+### Section A checklist
 
 | Check                | Pass criteria                                        | Blocks enable?           |
 |----------------------|------------------------------------------------------|--------------------------|
@@ -122,11 +120,12 @@ curl -sS "https://${HCP_API_ADDRESS}/vault/2020-11-25/organizations/${HCP_ORGANI
 | A.6 HCP readiness    | token prints, domain not already enabled, LD flag on | **yes**                  |
 | A.5 TLS              | SAN = `*.hcp.to`                                     | no — expected pre-enable |
 
-All **yes** rows green ⇒ go to [Enable the custom domain](#enable-the-custom-domain).
+When every row marked "yes" passes, continue to
+[Enable-Custom-Domains.md](Enable-Custom-Domains.md).
 
 ---
 
-## Section B. Private-only clusters (HVN peering and VPN)
+## Section B. Private clusters
 
 `public_link = false`, `enable_vpn = true`, an HVN peering created or adopted, and
 `manage_peering_routes = true`. Vault is reachable only from inside the peered VPC
@@ -245,7 +244,7 @@ nc -zvw3 ${PRIV_HOSTPORT%:*} "$PRIV_PORT"        # must time out / fail
 If this still succeeds with the VPN down, a path to Vault exists outside this
 config — understand where it comes from before you rely on the isolation.
 
-### Section B — Go / No-Go
+### Section B checklist
 
 | Check                     | Pass criteria                                                                               | Blocks enable?                    |
 |---------------------------|---------------------------------------------------------------------------------------------|-----------------------------------|
@@ -259,20 +258,7 @@ config — understand where it comes from before you rely on the isolation.
 | B.8 isolation (VPN down)  | connection times out                                                                        | no — but investigate if it passes |
 | B.7 TLS                   | still the `*.hcp.to` certificate                                                            | no — expected pre-enable          |
 
-All **yes** rows green ⇒ go to [Enable the custom domain](#enable-the-custom-domain).
-
----
-
-## Enable the custom domain
-
-Only once your section's Go / No-Go table is green. The enable call is **not**
-part of this Terraform config — the full procedure (environment setup, the PATCH
-request, recording the response, and waiting for the certificate workflow) is in
+When every row marked "yes" passes, continue to
 [Enable-Custom-Domains.md](Enable-Custom-Domains.md).
-
-Once its operation reaches `DONE`, verify end to end with
-[Test-Custom-Domains.md](Test-Custom-Domains.md): the certificate issuer should
-be Let's Encrypt with `vault.<zone>` in the SAN, and a plain
-`curl "https://<custom-domain>:8200/v1/sys/health"` (no `-k`) should succeed.
 
 ---
