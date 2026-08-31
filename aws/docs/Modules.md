@@ -1,0 +1,19 @@
+# Modules
+
+[← Back to README](../README.md)
+
+Six modules, composed by the root configuration:
+
+| Module                        | Purpose                                                                                                                                                                                                                                                                                                                                                                                                               |
+|-------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `vault-cluster`               | Creates `hcp_vault_cluster`, or adopts one via `data.hcp_vault_cluster`; derives the bare hostname the custom-domain CNAME targets; splices in the `audit_log_config` block                                                                                                                                                                                                                                           |
+| `vault-custom-domain-records` | Route53 `vault.<zone>` CNAME to the Vault endpoint, plus the `_acme-challenge` CNAME for Let's Encrypt DNS-01 validation                                                                                                                                                                                                                                                                                              |
+| `vault-hvn-peering`           | Creates a new HVN ⇄ VPC peering, or reads an externally-managed one via `data.hcp_aws_network_peering`; when `manage_peering_routes`, also the `hcp_hvn_route` entries for the VPC CIDRs and the `aws_route` for the HVN CIDR. Not instantiated for a public cluster, or a private one with no peering requested. Self-validates: `vpc_id`/`subnet_id` present, create-vs-adopt exclusivity, VPC↔HVN CIDR non-overlap |
+| `vault-aws-client-vpn`        | Self-signed mTLS CA + certs into ACM, a Client VPN endpoint associated with `subnet_id`, authorization rules and a route for the VPC and HVN CIDRs, and a ready-to-use `.ovpn` profile. Instantiated only when `public_link = false` and `enable_vpn = true`. Self-validates: `vpc_id`/`subnet_id`/`client_vpn_cidr` present, client CIDR non-overlap with the VPC and HVN CIDRs                                      |
+| `cloudwatch-audit-log`        | AWS-native audit destination — a CloudWatch log group and a dedicated least-privilege IAM user/key. Active only when `audit_log_enabled && cloudwatch_audit_log_enabled`                                                                                                                                                                                                                                              |
+| `vault-audit-log`             | Config builder for an external audit sink (Datadog, Splunk, Elasticsearch, Grafana, New Relic, HTTP, or self-managed CloudWatch credentials). Forwards credentials only — creates no resources                                                                                                                                                                                                                        |
+
+How the modules wire together, and the reasoning behind the audit-logging design,
+are in [Optional reading](Optional-Reading.md) → [Module wiring
+diagram](Optional-Reading.md#module-wiring-diagram) and [Audit logging
+configuration](Optional-Reading.md#audit-logging-configuration).
