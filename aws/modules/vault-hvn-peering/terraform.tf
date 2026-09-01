@@ -10,5 +10,13 @@ terraform {
       source  = "hashicorp/hcp"
       version = "~> 0.114"
     }
+    http = {
+      source  = "hashicorp/http"
+      version = "~> 3.4"
+    }
+    external = {
+      source  = "hashicorp/external"
+      version = "~> 2.3"
+    }
   }
 }

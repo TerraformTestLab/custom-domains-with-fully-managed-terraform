@@ -69,6 +69,24 @@ variable "manage_routes" {
   default     = true
 }
 
+variable "hcp_organization_id" {
+  description = "HCP organization ID that owns the HVN. Required when manage_routes is true: it is the HCP API path segment used to read the HVN's existing routes so a route already present (e.g. created with the peering in the HCP portal) is adopted instead of failing on a duplicate."
+  type        = string
+  default     = ""
+}
+
+variable "hcp_project_id" {
+  description = "HCP project ID that owns the HVN. Required when manage_routes is true (HCP API path segment for the existing-routes lookup)."
+  type        = string
+  default     = ""
+}
+
+variable "hcp_api_address" {
+  description = "HCP API hostname (no scheme) for the existing-routes lookup. Defaults to the int environment endpoint."
+  type        = string
+  default     = "api.hcp.to"
+}
+
 variable "tags" {
   description = "Tags applied to AWS resources created by this module."
   type        = map(string)

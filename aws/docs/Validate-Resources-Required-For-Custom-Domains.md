@@ -19,6 +19,9 @@ Pick the section that matches your cluster:
   (Section B) an OpenVPN client.
 - Shell configured per [Prepare-Environment.md](Prepare-Environment.md) — AWS
   credentials, and `HCP_API_ADDRESS` plus a fresh `HCP_API_TOKEN`.
+- Section B with `manage_peering_routes = true`: `hcp_organization_id` set in
+  `terraform.tfvars` and `HCP_API_TOKEN` current — `terraform apply` already
+  needed both, since the plan reads the HVN's existing routes.
 - Your project is on the `hcpv-custom-domain-enabled` LaunchDarkly flag
   ([Prerequisites.md](Prerequisites.md#launchdarkly-flags)).
 
@@ -148,8 +151,12 @@ PRIV_URL=$(terraform output -raw vault_private_endpoint_url)
 ```
 
 Empty route lists mean `manage_peering_routes = false` — flip it and re-apply, or
-be certain both route directions already exist by hand. `hvn_peering_state` other
-than `ACTIVE` means the peering has not finished establishing; wait and re-check.
+be certain both route directions already exist by hand. With
+`manage_peering_routes = true`, a route direction that already existed for this
+peering (for example created with the peering in the HCP portal) is adopted, not
+duplicated; check `terraform output hvn_peering_hvn_routes_adopted` and
+`hvn_peering_aws_routes_adopted` to see which. `hvn_peering_state` other than
+`ACTIVE` means the peering has not finished establishing; wait and re-check.
 
 ### B.2 The AWS peering and Client VPN are healthy
 

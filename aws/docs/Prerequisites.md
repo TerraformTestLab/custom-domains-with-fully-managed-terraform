@@ -49,9 +49,9 @@ an existing resource or created by Terraform. The three tables below group the
 
 ### Supplied by you
 
-This configuration never creates any of these. The first four are required for
-every deployment. `vpc_id` and `subnet_id` are required only when a private
-cluster uses the Client VPN or an HVN peering, and are left `""` otherwise.
+This configuration never creates any of these. `aws_region`, `hcp_project_id`,
+`hvn_id`, and `route53_hosted_zone_name` are required for every deployment. The
+rest are conditional and are left `""` otherwise.
 
 | Variable | What it identifies | Required | Where to find it |
 |---|---|---|---|
@@ -59,8 +59,13 @@ cluster uses the Client VPN or an HVN peering, and are left `""` otherwise.
 | `hcp_project_id` | The HCP project that owns the HVN and the cluster | Always | HCP Portal → project picker in the top bar → **Project settings**; the value is also the `project_id=` segment of the URL |
 | `hvn_id` | The HCP HVN the cluster runs in | Always | HCP Portal → **HashiCorp Virtual Networks** → your HVN → **Network ID** on the Overview tab |
 | `route53_hosted_zone_name` | The public Route 53 hosted zone that holds the DNS records | Always | AWS Console → **Route 53** → **Hosted zones** → your public zone → its **Domain name**, without the trailing dot |
+| `hcp_organization_id` | The HCP organization that owns the HVN and the cluster | When `manage_peering_routes = true` — `terraform plan` reads the HVN's existing routes from the HCP API to adopt them instead of duplicating them | HCP Portal → top-right org menu → **Settings** → **Organization ID**; also the `organization_id=` segment of the URL |
 | `vpc_id` | The AWS VPC peered to the HVN and hosting the Client VPN | When `public_link = false` and `enable_vpn = true` or a peering is active | AWS Console → **VPC** → **Your VPCs** → the **VPC ID** column (`vpc-…`) |
 | `subnet_id` | A private subnet inside `vpc_id` | Alongside `vpc_id`; must belong to it | AWS Console → **VPC** → **Subnets** → a private subnet in that VPC → its **Subnet ID** (`subnet-…`) |
+
+When `manage_peering_routes = true`, that same plan-time read also needs a
+current `HCP_API_TOKEN` in your shell — see
+[Prepare-Environment.md](Prepare-Environment.md).
 
 The HVN, VPC, subnet, and cluster must all be in the same region; `terraform
 plan` fails when the HVN's region does not match `aws_region`. The HVN's region

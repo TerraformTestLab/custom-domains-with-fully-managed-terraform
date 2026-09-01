@@ -38,8 +38,10 @@ full definitions are in `outputs.tf`.
 | `hvn_peering_state`               | string / null       | Current HCP peering state (expect `ACTIVE`)                                                                                          |
 | `hcp_peering_id`                  | string / null       | Slug ID of the HCP network peering                                                                                                   |
 | `aws_peering_connection_id`       | string / null       | AWS-side peering connection ID (`pcx-…`)                                                                                             |
-| `hvn_peering_hvn_route_ids`       | list(string) / null | HVN routes pointing back at the VPC CIDR(s)                                                                                          |
-| `hvn_peering_aws_route_table_ids` | list(string) / null | AWS route tables that received a route to the HVN CIDR                                                                               |
+| `hvn_peering_hvn_route_ids`       | list(string) / null | HVN routes pointing back at the VPC CIDR(s) — created and adopted                                                                    |
+| `hvn_peering_aws_route_table_ids` | list(string) / null | AWS route tables that carry a route to the HVN CIDR — created and adopted                                                            |
+| `hvn_peering_hvn_routes_adopted`  | list(string) / null | VPC CIDRs whose HVN route already existed and was adopted rather than created                                                        |
+| `hvn_peering_aws_routes_adopted`  | list(string) / null | Route table IDs whose route to the HVN CIDR already existed and was adopted rather than created                                      |
 
 ## Client VPN
 
