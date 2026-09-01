@@ -235,6 +235,26 @@ module "vault_hvn_peering" {
   create_peering      = local._create_peering_in
   existing_peering_id = var.existing_hvn_peering_id
   manage_routes       = coalesce(var.manage_peering_routes, false)
+
+  hcp_organization_id = var.hcp_organization_id
+  hcp_project_id      = var.hcp_project_id
+  hcp_api_address     = var.hcp_api_address
+}
+
+# Adopt HVN / AWS routes that already exist for this peering (e.g. created with
+# the peering in the HCP portal) instead of failing the apply on a duplicate.
+# The maps are empty unless manage_peering_routes = true and the peering is
+# adopted; the module computes them from a live HCP API read at plan time.
+import {
+  for_each = local.manage_peering ? module.vault_hvn_peering[0].hvn_route_imports : {}
+  to       = module.vault_hvn_peering[0].hcp_hvn_route.vpc[each.key]
+  id       = each.value
+}
+
+import {
+  for_each = local.manage_peering ? module.vault_hvn_peering[0].aws_route_imports : {}
+  to       = module.vault_hvn_peering[0].aws_route.hvn[each.key]
+  id       = each.value
 }
 
 module "vault_aws_client_vpn" {

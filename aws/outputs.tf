@@ -125,6 +125,16 @@ output "hvn_peering_aws_route_table_ids" {
   value       = local.manage_peering ? module.vault_hvn_peering[0].aws_route_table_ids : null
 }
 
+output "hvn_peering_hvn_routes_adopted" {
+  description = "VPC CIDRs whose HVN route already existed and was adopted rather than created."
+  value       = local.manage_peering ? module.vault_hvn_peering[0].hvn_routes_adopted : null
+}
+
+output "hvn_peering_aws_routes_adopted" {
+  description = "Route table IDs whose route to the HVN CIDR already existed and was adopted rather than created."
+  value       = local.manage_peering ? module.vault_hvn_peering[0].aws_routes_adopted : null
+}
+
 # VPN outputs
 output "vpn_enabled" {
   description = "Whether AWS Client VPN module was enabled."

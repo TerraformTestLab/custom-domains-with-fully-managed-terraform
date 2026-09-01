@@ -24,6 +24,23 @@ variable "hcp_project_id" {
   }
 }
 
+variable "hcp_organization_id" {
+  description = "HCP organization ID that owns the HVN and Vault cluster. Required ONLY for a private cluster that manages its peering routes (manage_peering_routes = true): the plan reads the HVN's existing routes from the HCP API to adopt them instead of failing on a duplicate. Leave \"\" for a public cluster or when manage_peering_routes = false."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.hcp_organization_id == "" || can(regex("^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$", var.hcp_organization_id))
+    error_message = "hcp_organization_id must be \"\" or a UUID."
+  }
+}
+
+variable "hcp_api_address" {
+  description = "HCP API hostname (no scheme) used to read existing HVN routes when manage_peering_routes = true. Defaults to the int environment; override for other environments."
+  type        = string
+  default     = "api.hcp.to"
+}
+
 ###############################################################################
 # Custom domain (Route53)
 ###############################################################################

@@ -28,7 +28,10 @@ mock_provider "aws" {
     }
   }
   mock_data "aws_route_table" {
-    defaults = { route_table_id = "rtb-00000000000000000" }
+    defaults = {
+      route_table_id = "rtb-00000000000000000"
+      routes         = []
+    }
   }
   mock_data "aws_route53_zone" {
     defaults = { zone_id = "Z0000000000000000000Q" }
@@ -61,9 +64,27 @@ mock_provider "hcp" {
 mock_provider "tls" {}
 mock_provider "local" {}
 
+# The HVN-routes lookup (data.http.hvn_routes) and the HCP_API_TOKEN reader
+# (data.external.hcp_api_token) that back the adopt-existing-routes logic.
+mock_provider "http" {
+  mock_data "http" {
+    defaults = {
+      status_code   = 200
+      response_body = "{\"routes\":[]}"
+    }
+  }
+}
+
+mock_provider "external" {
+  mock_data "external" {
+    defaults = { result = { value = "mock-token" } }
+  }
+}
+
 variables {
   aws_region               = "us-west-2"
   hcp_project_id           = "605075e7-938b-4ffb-b041-c36f3b58087b"
+  hcp_organization_id      = "7f0000aa-0000-4000-8000-000000000abc"
   route53_hosted_zone_name = "example.com"
   vault_record_name        = "vault"
   cluster_id               = "vault-cluster-test"
@@ -165,6 +186,9 @@ run "public_cluster_ignores_set_peering_vars" {
     create_hvn_peering      = true
     manage_peering_routes   = true
     existing_hvn_peering_id = ""
+    # Ignored value + no HCP org / token: a public cluster never instantiates the
+    # peering module, so the new plan-phase validations cannot block it.
+    hcp_organization_id = ""
   }
   assert {
     condition     = output.vpn_enabled == false && output.hvn_peering_enabled == false
@@ -329,6 +353,8 @@ run "peering_create_and_existing_conflict_fails" {
     create_peering      = true
     existing_peering_id = "vault-vpc-peering"
     manage_routes       = true
+    hcp_organization_id = "7f0000aa-0000-4000-8000-000000000abc"
+    hcp_project_id      = "605075e7-938b-4ffb-b041-c36f3b58087b"
   }
   expect_failures = [var.existing_peering_id]
 }
@@ -346,6 +372,8 @@ run "peering_missing_vpc_fails" {
     create_peering      = true
     existing_peering_id = ""
     manage_routes       = true
+    hcp_organization_id = "7f0000aa-0000-4000-8000-000000000abc"
+    hcp_project_id      = "605075e7-938b-4ffb-b041-c36f3b58087b"
   }
   expect_failures = [var.vpc_id, var.subnet_id]
 }
@@ -363,6 +391,8 @@ run "peering_vpc_hvn_overlap_fails" {
     create_peering      = true
     existing_peering_id = ""
     manage_routes       = true
+    hcp_organization_id = "7f0000aa-0000-4000-8000-000000000abc"
+    hcp_project_id      = "605075e7-938b-4ffb-b041-c36f3b58087b"
   }
   override_data {
     target = data.aws_vpc.this
@@ -372,6 +402,181 @@ run "peering_vpc_hvn_overlap_fails" {
         cidr_block     = "172.25.0.0/16"
         association_id = "vpc-cidr-assoc-0000000000000000"
         state          = "associated"
+      }]
+    }
+  }
+  expect_failures = [terraform_data.validations]
+}
+
+####  adopt-existing-routes: plan-phase validations + detection  ##############
+
+# manage_routes = true but no HCP organization ID -> the plan cannot read the
+# HVN's existing routes.
+run "peering_manage_routes_requires_hcp_organization_id" {
+  command = plan
+  module {
+    source = "./modules/vault-hvn-peering"
+  }
+  variables {
+    hvn_id              = "vault-hvn-test"
+    vpc_id              = "vpc-00000000000000000"
+    subnet_id           = "subnet-00000000000000000"
+    peer_vpc_region     = "us-west-2"
+    create_peering      = true
+    existing_peering_id = ""
+    manage_routes       = true
+    hcp_organization_id = ""
+    hcp_project_id      = "605075e7-938b-4ffb-b041-c36f3b58087b"
+  }
+  expect_failures = [terraform_data.validations]
+}
+
+# manage_routes = true but HCP_API_TOKEN is empty in the environment.
+run "peering_manage_routes_requires_hcp_api_token" {
+  command = plan
+  module {
+    source = "./modules/vault-hvn-peering"
+  }
+  variables {
+    hvn_id              = "vault-hvn-test"
+    vpc_id              = "vpc-00000000000000000"
+    subnet_id           = "subnet-00000000000000000"
+    peer_vpc_region     = "us-west-2"
+    create_peering      = true
+    existing_peering_id = ""
+    manage_routes       = true
+    hcp_organization_id = "7f0000aa-0000-4000-8000-000000000abc"
+    hcp_project_id      = "605075e7-938b-4ffb-b041-c36f3b58087b"
+  }
+  override_data {
+    target = data.external.hcp_api_token[0]
+    values = { result = { value = "" } }
+  }
+  expect_failures = [terraform_data.validations]
+}
+
+# An HVN route that already exists for the VPC CIDR and points at this peering is
+# detected and reported for adoption - no duplicate-create failure.
+run "peering_reports_existing_hvn_route_as_adopted" {
+  command = plan
+  module {
+    source = "./modules/vault-hvn-peering"
+  }
+  variables {
+    hvn_id              = "vault-hvn-test"
+    vpc_id              = "vpc-00000000000000000"
+    subnet_id           = "subnet-00000000000000000"
+    peer_vpc_region     = "us-west-2"
+    create_peering      = false
+    existing_peering_id = "vault-vpc-peering"
+    manage_routes       = true
+    hcp_organization_id = "7f0000aa-0000-4000-8000-000000000abc"
+    hcp_project_id      = "605075e7-938b-4ffb-b041-c36f3b58087b"
+  }
+  override_data {
+    target = data.http.hvn_routes[0]
+    values = {
+      status_code   = 200
+      response_body = "{\"routes\":[{\"id\":\"portal-route-vpc\",\"destination\":\"10.0.0.0/16\",\"target\":{\"hvn_connection\":{\"id\":\"vault-vpc-peering\"}}}]}"
+    }
+  }
+  assert {
+    condition     = contains(output.hvn_routes_adopted, "10.0.0.0/16")
+    error_message = "existing HVN route for the VPC CIDR pointing at this peering must be reported as adopted"
+  }
+  assert {
+    condition     = output.hvn_route_imports["10.0.0.0/16"] == "605075e7-938b-4ffb-b041-c36f3b58087b:vault-hvn-test:portal-route-vpc"
+    error_message = "hvn_route_imports must carry the {project}:{hvn}:{route_id} import ID"
+  }
+}
+
+# An HVN route for the VPC CIDR that points at a different peering is not adopted
+# - the plan fails rather than silently rewriting it.
+run "peering_rejects_foreign_hvn_route" {
+  command = plan
+  module {
+    source = "./modules/vault-hvn-peering"
+  }
+  variables {
+    hvn_id              = "vault-hvn-test"
+    vpc_id              = "vpc-00000000000000000"
+    subnet_id           = "subnet-00000000000000000"
+    peer_vpc_region     = "us-west-2"
+    create_peering      = false
+    existing_peering_id = "vault-vpc-peering"
+    manage_routes       = true
+    hcp_organization_id = "7f0000aa-0000-4000-8000-000000000abc"
+    hcp_project_id      = "605075e7-938b-4ffb-b041-c36f3b58087b"
+  }
+  override_data {
+    target = data.http.hvn_routes[0]
+    values = {
+      status_code   = 200
+      response_body = "{\"routes\":[{\"id\":\"r1\",\"destination\":\"10.0.0.0/16\",\"target\":{\"hvn_connection\":{\"id\":\"some-other-peering\"}}}]}"
+    }
+  }
+  expect_failures = [terraform_data.validations]
+}
+
+# An AWS route to the HVN CIDR that already exists in the target route table and
+# points at this peering connection is detected and reported for adoption.
+run "peering_reports_existing_aws_route_as_adopted" {
+  command = plan
+  module {
+    source = "./modules/vault-hvn-peering"
+  }
+  variables {
+    hvn_id              = "vault-hvn-test"
+    vpc_id              = "vpc-00000000000000000"
+    subnet_id           = "subnet-00000000000000000"
+    peer_vpc_region     = "us-west-2"
+    create_peering      = false
+    existing_peering_id = "vault-vpc-peering"
+    manage_routes       = true
+    hcp_organization_id = "7f0000aa-0000-4000-8000-000000000abc"
+    hcp_project_id      = "605075e7-938b-4ffb-b041-c36f3b58087b"
+  }
+  override_data {
+    target = data.aws_route_table.targets["rtb-00000000000000000"]
+    values = {
+      route_table_id = "rtb-00000000000000000"
+      routes = [{
+        cidr_block                = "172.25.16.0/20"
+        vpc_peering_connection_id = "pcx-00000000000000000"
+      }]
+    }
+  }
+  assert {
+    condition     = contains(output.aws_routes_adopted, "rtb-00000000000000000")
+    error_message = "existing AWS route to the HVN CIDR pointing at this peering must be reported as adopted"
+  }
+}
+
+# An AWS route to the HVN CIDR that points at a different connection is not
+# adopted - the plan fails.
+run "peering_rejects_foreign_aws_route" {
+  command = plan
+  module {
+    source = "./modules/vault-hvn-peering"
+  }
+  variables {
+    hvn_id              = "vault-hvn-test"
+    vpc_id              = "vpc-00000000000000000"
+    subnet_id           = "subnet-00000000000000000"
+    peer_vpc_region     = "us-west-2"
+    create_peering      = false
+    existing_peering_id = "vault-vpc-peering"
+    manage_routes       = true
+    hcp_organization_id = "7f0000aa-0000-4000-8000-000000000abc"
+    hcp_project_id      = "605075e7-938b-4ffb-b041-c36f3b58087b"
+  }
+  override_data {
+    target = data.aws_route_table.targets["rtb-00000000000000000"]
+    values = {
+      route_table_id = "rtb-00000000000000000"
+      routes = [{
+        cidr_block                = "172.25.16.0/20"
+        vpc_peering_connection_id = "pcx-99999999999999999"
       }]
     }
   }
