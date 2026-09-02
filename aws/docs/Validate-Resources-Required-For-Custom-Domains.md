@@ -20,8 +20,9 @@ Pick the section that matches your cluster:
 - Shell configured per [Prepare-Environment.md](Prepare-Environment.md) — AWS
   credentials, and `HCP_API_ADDRESS` plus a fresh `HCP_API_TOKEN`.
 - Section B with `manage_peering_routes = true`: `hcp_organization_id` set in
-  `terraform.tfvars` and `HCP_API_TOKEN` current — `terraform apply` already
-  needed both, since the plan reads the HVN's existing routes.
+  `terraform.tfvars` and `HCP_API_TOKEN` plus `HCP_API_ADDRESS` current in the
+  shell — `terraform apply` already needed all three, since the plan reads the
+  HVN's existing routes.
 - Your project is on the `hcpv-custom-domain-enabled` LaunchDarkly flag
   ([Prerequisites.md](Prerequisites.md#launchdarkly-flags)).
 

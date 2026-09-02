@@ -35,12 +35,6 @@ variable "hcp_organization_id" {
   }
 }
 
-variable "hcp_api_address" {
-  description = "HCP API hostname (no scheme) used to read existing HVN routes when manage_peering_routes = true. Defaults to the int environment; override for other environments."
-  type        = string
-  default     = "api.hcp.to"
-}
-
 ###############################################################################
 # Custom domain (Route53)
 ###############################################################################

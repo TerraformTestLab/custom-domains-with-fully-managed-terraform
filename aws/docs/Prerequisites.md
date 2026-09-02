@@ -64,8 +64,9 @@ rest are conditional and are left `""` otherwise.
 | `subnet_id` | A private subnet inside `vpc_id` | Alongside `vpc_id`; must belong to it | AWS Console → **VPC** → **Subnets** → a private subnet in that VPC → its **Subnet ID** (`subnet-…`) |
 
 When `manage_peering_routes = true`, that same plan-time read also needs a
-current `HCP_API_TOKEN` in your shell — see
-[Prepare-Environment.md](Prepare-Environment.md).
+current `HCP_API_TOKEN` and `HCP_API_ADDRESS` in your shell — the root
+configuration reads both from the environment and injects them into the peering
+module. See [Prepare-Environment.md](Prepare-Environment.md).
 
 The HVN, VPC, subnet, and cluster must all be in the same region; `terraform
 plan` fails when the HVN's region does not match `aws_region`. The HVN's region

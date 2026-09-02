@@ -150,6 +150,48 @@ resource "terraform_data" "audit_preflight" {
 }
 
 ###############################################################################
+# HVN-route lookup inputs (plan time)
+#
+# manage_peering_routes = true has vault-hvn-peering read the HVN's existing
+# routes from the HCP API during plan. That read needs the API host and a bearer
+# token; both come from the environment (HCP_API_ADDRESS / HCP_API_TOKEN), never
+# a variable or state, and are injected into the module. The token is held as a
+# sensitive value; only the "is it empty" check is unwrapped, for the
+# precondition and the module's count guard. The preconditions fail the plan
+# early - with the exact export to run - when either is missing.
+###############################################################################
+data "external" "hcp_api_address" {
+  count   = local.peering_routes_managed ? 1 : 0
+  program = ["bash", "-c", "printf '{\"value\":\"%s\"}' \"$${HCP_API_ADDRESS:-}\""]
+}
+
+data "external" "hcp_api_token" {
+  count   = local.peering_routes_managed ? 1 : 0
+  program = ["bash", "-c", "printf '{\"value\":\"%s\"}' \"$${HCP_API_TOKEN:-}\""]
+}
+
+locals {
+  peering_routes_managed = local.manage_peering && coalesce(var.manage_peering_routes, false)
+  hcp_api_address        = try(data.external.hcp_api_address[0].result.value, "")
+  hcp_api_token          = sensitive(try(data.external.hcp_api_token[0].result.value, ""))
+}
+
+resource "terraform_data" "peering_routes_preflight" {
+  lifecycle {
+    # hcp_organization_id == "" is left to vault-hvn-peering's own precondition,
+    # so exactly one message fires: first "set hcp_organization_id", then these.
+    precondition {
+      condition     = !local.peering_routes_managed || var.hcp_organization_id == "" || local.hcp_api_address != ""
+      error_message = "HCP_API_ADDRESS must be exported (non-empty, HCP API host with no scheme) when manage_peering_routes = true - vault-hvn-peering reads the HVN's existing routes from that host at plan time. Run: export HCP_API_ADDRESS=\"api.hcp.to\" then re-run terraform plan."
+    }
+    precondition {
+      condition     = !local.peering_routes_managed || var.hcp_organization_id == "" || nonsensitive(local.hcp_api_token != "")
+      error_message = "HCP_API_TOKEN must be exported (non-empty) when manage_peering_routes = true - it authenticates the plan-time read of the HVN's existing routes. Run: export HCP_API_TOKEN=\"$(hcp auth print-access-token)\" then re-run terraform plan."
+    }
+  }
+}
+
+###############################################################################
 # Advisory checks - warn at the end of plan AND apply, never block.
 # Every condition is null-safe (coalesce) so it survives the window before
 # root_preflight reports an unset boolean.
@@ -238,7 +280,8 @@ module "vault_hvn_peering" {
 
   hcp_organization_id = var.hcp_organization_id
   hcp_project_id      = var.hcp_project_id
-  hcp_api_address     = var.hcp_api_address
+  hcp_api_address     = local.hcp_api_address
+  hcp_api_token       = local.hcp_api_token
 }
 
 # Adopt HVN / AWS routes that already exist for this peering (e.g. created with

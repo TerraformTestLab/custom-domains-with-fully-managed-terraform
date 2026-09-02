@@ -82,9 +82,16 @@ variable "hcp_project_id" {
 }
 
 variable "hcp_api_address" {
-  description = "HCP API hostname (no scheme) for the existing-routes lookup. Defaults to the int environment endpoint."
+  description = "HCP API hostname (no scheme) for the existing-routes lookup. The root module sources this from the HCP_API_ADDRESS environment variable and asserts it is non-empty when manage_routes is true - never set it from a variables file or state. Only read when manage_routes is true."
   type        = string
-  default     = "api.hcp.to"
+  default     = ""
+}
+
+variable "hcp_api_token" {
+  description = "Bearer token for the existing-routes lookup against the HCP API. The root module sources this from the HCP_API_TOKEN environment variable and asserts it is non-empty when manage_routes is true - never set it from a variables file or state. Only read when manage_routes is true."
+  type        = string
+  default     = ""
+  sensitive   = true
 }
 
 variable "tags" {

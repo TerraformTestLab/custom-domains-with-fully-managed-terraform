@@ -28,6 +28,11 @@ export HCP_API_TOKEN="$(hcp auth print-access-token)"
 `HCP_API_TOKEN` is short-lived. Re-run the last three lines when a call returns
 `401`.
 
+`HCP_API_ADDRESS` is the HCP API host (no scheme). For a **private cluster with
+`manage_peering_routes = true`** the root configuration reads it from the
+environment and passes it into the `vault-hvn-peering` module — same as
+`HCP_API_TOKEN` — so it must be exported before `terraform plan`.
+
 `HCP_ORGANIZATION_ID`, `HCP_PROJECT_ID`, and `HCP_PROVIDER_NAME` are used by the
 custom-domain API calls in [Enable-Custom-Domains.md](Enable-Custom-Domains.md)
 and [Test-Custom-Domains.md](Test-Custom-Domains.md). `HCP_ORGANIZATION_ID` must
@@ -35,8 +40,8 @@ match `hcp_organization_id` in `terraform.tfvars`.
 
 For a **private cluster with `manage_peering_routes = true`**, `terraform plan`
 itself reads the HVN's existing routes from the HCP API. That plan will fail
-unless `hcp_organization_id` is set in `terraform.tfvars` and `HCP_API_TOKEN` is
-current in your shell.
+unless `hcp_organization_id` is set in `terraform.tfvars` and both
+`HCP_API_TOKEN` and `HCP_API_ADDRESS` are current in your shell.
 
 ## AWS credentials
 
@@ -68,7 +73,8 @@ doormat aws tf-push variable-set --id <your-varset-id> -a "${AWS_ACCOUNT_ID}"
 - [ ] HCP endpoints set and `hcp auth login` done
 - [ ] `HCP_ORGANIZATION_ID`, `HCP_PROJECT_ID`, `HCP_PROVIDER_NAME` exported
 - [ ] `HCP_API_TOKEN` exported and current
+- [ ] `HCP_API_ADDRESS` exported
 - [ ] AWS credentials exported in your shell
 - [ ] Private cluster with `manage_peering_routes = true`: `hcp_organization_id`
-      set in `terraform.tfvars`
+      set in `terraform.tfvars`, `HCP_API_TOKEN` and `HCP_API_ADDRESS` exported
 - [ ] Remote execution only: AWS credentials pushed to the project variable set
