@@ -1,6 +1,8 @@
 # Local .terraform directories
 **/.terraform/*
 .terraform/
+.idea
+.mcp.json
 
 # Terraform state files
 *.tfstate
