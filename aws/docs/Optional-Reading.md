@@ -121,13 +121,14 @@ Key points:
 - `GATE -.-> MP` / `GATE -.-> MV` is the `count` decision, not a value.
   `MP -.-> MV` is apply ordering, not data flow.
 - With `manage_peering_routes = true`, `vault-hvn-peering` reads the HVN's
-  existing routes from the HCP API at plan time (`data.http.hvn_routes`, bearer
-  token from `HCP_API_TOKEN`, organization from `hcp_organization_id`) and the
-  target route tables from AWS. A route direction that already exists and points
-  at this peering is adopted through a root `import` block instead of failing on
-  a duplicate; one that points elsewhere fails the plan. A brand-new peering
-  (`create_hvn_peering = true`) has nothing to adopt, so both directions are
-  created.
+  existing routes from the HCP API at plan time (`data.http.hvn_routes`) and the
+  target route tables from AWS. The API host and bearer token come from
+  `HCP_API_ADDRESS` / `HCP_API_TOKEN`, which the root reads from the environment
+  and passes in; the organization is `hcp_organization_id`. A route direction
+  that already exists and points at this peering is adopted through a root
+  `import` block instead of failing on a duplicate; one that points elsewhere
+  fails the plan. A brand-new peering (`create_hvn_peering = true`) has nothing
+  to adopt, so both directions are created.
 
 The full input-to-outcome matrix is in
 [Networking enablement](Inputs.md#networking-enablement).

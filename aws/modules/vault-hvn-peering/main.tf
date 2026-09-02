@@ -64,22 +64,20 @@ locals {
 # import blocks below) instead of failing the apply on a duplicate create.
 ###############################################################################
 
-# HCP_API_TOKEN is read from the environment - never from a variable or state.
-data "external" "hcp_api_token" {
-  count   = var.manage_routes ? 1 : 0
-  program = ["bash", "-c", "printf '{\"value\":\"%s\"}' \"$${HCP_API_TOKEN:-}\""]
-}
-
 locals {
-  hcp_api_token = try(data.external.hcp_api_token[0].result.value, "")
-
+  # hcp_api_address / hcp_api_token carry the HCP API host and bearer token for
+  # the plan-time route read. The root sources both from the environment
+  # (HCP_API_ADDRESS / HCP_API_TOKEN) and asserts they are set - this module
+  # only consumes them.
+  #
   # The HVN-route lookup can run only once its inputs are all present. Until then
   # the preconditions below report exactly what is missing.
   routes_lookup_ready = (
     var.manage_routes
     && var.hcp_organization_id != ""
     && var.hcp_project_id != ""
-    && local.hcp_api_token != ""
+    && nonsensitive(var.hcp_api_token != "")
+    && var.hcp_api_address != ""
   )
 }
 
@@ -89,7 +87,7 @@ data "http" "hvn_routes" {
   url   = "https://${var.hcp_api_address}/network/2020-09-07/organizations/${var.hcp_organization_id}/projects/${var.hcp_project_id}/networks/${var.hvn_id}/routes"
 
   request_headers = {
-    Authorization = "Bearer ${local.hcp_api_token}"
+    Authorization = "Bearer ${var.hcp_api_token}"
     Accept        = "application/json"
   }
 }
@@ -145,20 +143,16 @@ resource "terraform_data" "validations" {
     }
 
     # manage_peering_routes = true => the plan reads the HVN's existing routes
-    # from the HCP API. That needs an organization ID and a bearer token.
+    # from the HCP API. That needs an organization ID; the caller-supplied
+    # hcp_api_address / hcp_api_token (both non-empty) are checked in the root.
     precondition {
       condition     = !var.manage_routes || (var.hcp_organization_id != null && var.hcp_organization_id != "")
       error_message = "vault-hvn-peering: hcp_organization_id must be set (non-empty) in terraform.tfvars when manage_peering_routes = true. It is the HCP organization whose existing HVN routes are read so they are adopted instead of duplicated. Find it in the HCP portal under Settings."
     }
 
     precondition {
-      condition     = !var.manage_routes || var.hcp_organization_id == null || var.hcp_organization_id == "" || local.hcp_api_token != ""
-      error_message = "vault-hvn-peering: environment variable HCP_API_TOKEN must be set to a non-empty value when manage_peering_routes = true. Run: export HCP_API_TOKEN=\"$(hcp auth print-access-token)\" then re-run terraform plan."
-    }
-
-    precondition {
       condition     = !local.routes_lookup_ready || data.http.hvn_routes[0].status_code == 200
-      error_message = "vault-hvn-peering: reading HVN routes from HCP returned HTTP ${try(data.http.hvn_routes[0].status_code, 0)}. 401 or 403 - HCP_API_TOKEN is missing or expired, run 'hcp auth login' and re-export it. 404 - check hcp_organization_id, hcp_project_id and hvn_id."
+      error_message = "vault-hvn-peering: reading HVN routes from HCP returned HTTP ${try(data.http.hvn_routes[0].status_code, 0)}. 401 or 403 - HCP_API_TOKEN is missing or expired, run 'hcp auth login' and re-export it. 404 - check HCP_API_ADDRESS, hcp_organization_id, hcp_project_id and hvn_id."
     }
 
     # A route that already exists for a VPC CIDR / to the HVN CIDR but points

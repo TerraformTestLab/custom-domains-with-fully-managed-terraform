@@ -64,8 +64,8 @@ mock_provider "hcp" {
 mock_provider "tls" {}
 mock_provider "local" {}
 
-# The HVN-routes lookup (data.http.hvn_routes) and the HCP_API_TOKEN reader
-# (data.external.hcp_api_token) that back the adopt-existing-routes logic.
+# The HVN-routes lookup (data.http.hvn_routes, in the vault-hvn-peering module)
+# that backs the adopt-existing-routes logic.
 mock_provider "http" {
   mock_data "http" {
     defaults = {
@@ -75,6 +75,9 @@ mock_provider "http" {
   }
 }
 
+# The root reads HCP_API_ADDRESS / HCP_API_TOKEN from the environment through
+# these and injects them into vault-hvn-peering; the mock makes both non-empty so
+# terraform_data.peering_routes_preflight passes unless a run overrides it.
 mock_provider "external" {
   mock_data "external" {
     defaults = { result = { value = "mock-token" } }
@@ -431,28 +434,47 @@ run "peering_manage_routes_requires_hcp_organization_id" {
   expect_failures = [terraform_data.validations]
 }
 
-# manage_routes = true but HCP_API_TOKEN is empty in the environment.
+# manage_peering_routes = true but HCP_API_TOKEN is empty in the environment.
+# The env-var check lives in the root now, not the module.
 run "peering_manage_routes_requires_hcp_api_token" {
   command = plan
-  module {
-    source = "./modules/vault-hvn-peering"
-  }
   variables {
-    hvn_id              = "vault-hvn-test"
-    vpc_id              = "vpc-00000000000000000"
-    subnet_id           = "subnet-00000000000000000"
-    peer_vpc_region     = "us-west-2"
-    create_peering      = true
-    existing_peering_id = ""
-    manage_routes       = true
-    hcp_organization_id = "7f0000aa-0000-4000-8000-000000000abc"
-    hcp_project_id      = "605075e7-938b-4ffb-b041-c36f3b58087b"
+    public_link           = false
+    enable_vpn            = false
+    create_hvn_peering    = true
+    manage_peering_routes = true
+    vpc_id                = "vpc-00000000000000000"
+    subnet_id             = "subnet-00000000000000000"
   }
   override_data {
     target = data.external.hcp_api_token[0]
     values = { result = { value = "" } }
   }
-  expect_failures = [terraform_data.validations]
+  expect_failures = [
+    terraform_data.peering_routes_preflight,
+    check.private_cluster_vpn_skipped,
+  ]
+}
+
+# manage_peering_routes = true but HCP_API_ADDRESS is empty in the environment.
+run "peering_manage_routes_requires_hcp_api_address" {
+  command = plan
+  variables {
+    public_link           = false
+    enable_vpn            = false
+    create_hvn_peering    = true
+    manage_peering_routes = true
+    vpc_id                = "vpc-00000000000000000"
+    subnet_id             = "subnet-00000000000000000"
+  }
+  override_data {
+    target = data.external.hcp_api_address[0]
+    values = { result = { value = "" } }
+  }
+  expect_failures = [
+    terraform_data.peering_routes_preflight,
+    check.private_cluster_vpn_skipped,
+  ]
 }
 
 # An HVN route that already exists for the VPC CIDR and points at this peering is
@@ -472,6 +494,8 @@ run "peering_reports_existing_hvn_route_as_adopted" {
     manage_routes       = true
     hcp_organization_id = "7f0000aa-0000-4000-8000-000000000abc"
     hcp_project_id      = "605075e7-938b-4ffb-b041-c36f3b58087b"
+    hcp_api_address     = "api.hcp.to"
+    hcp_api_token       = "mock-token"
   }
   override_data {
     target = data.http.hvn_routes[0]
@@ -507,6 +531,8 @@ run "peering_rejects_foreign_hvn_route" {
     manage_routes       = true
     hcp_organization_id = "7f0000aa-0000-4000-8000-000000000abc"
     hcp_project_id      = "605075e7-938b-4ffb-b041-c36f3b58087b"
+    hcp_api_address     = "api.hcp.to"
+    hcp_api_token       = "mock-token"
   }
   override_data {
     target = data.http.hvn_routes[0]
@@ -535,6 +561,8 @@ run "peering_reports_existing_aws_route_as_adopted" {
     manage_routes       = true
     hcp_organization_id = "7f0000aa-0000-4000-8000-000000000abc"
     hcp_project_id      = "605075e7-938b-4ffb-b041-c36f3b58087b"
+    hcp_api_address     = "api.hcp.to"
+    hcp_api_token       = "mock-token"
   }
   override_data {
     target = data.aws_route_table.targets["rtb-00000000000000000"]
@@ -569,6 +597,8 @@ run "peering_rejects_foreign_aws_route" {
     manage_routes       = true
     hcp_organization_id = "7f0000aa-0000-4000-8000-000000000abc"
     hcp_project_id      = "605075e7-938b-4ffb-b041-c36f3b58087b"
+    hcp_api_address     = "api.hcp.to"
+    hcp_api_token       = "mock-token"
   }
   override_data {
     target = data.aws_route_table.targets["rtb-00000000000000000"]

@@ -14,7 +14,6 @@ from is in [Prerequisites.md](Prerequisites.md#resource-dependencies).
 | `aws_region`                   | `""`    | Region for every AWS resource. Must match the HVN, VPC, and subnet region.                                                                            |
 | `hcp_project_id`               | `""`    | HCP project that owns the HVN and cluster.                                                                                                            |
 | `hcp_organization_id`          | `""`    | HCP organization that owns the HVN. Required only when `manage_peering_routes = true` — the plan reads existing HVN routes from the HCP API.          |
-| `hcp_api_address`              | `api.hcp.to` | HCP API host for that routes read. Override for non-`int` environments.                                                                         |
 | `route53_hosted_zone_name`     | `""`    | Existing public Route 53 zone the records are created in.                                                                                             |
 | `vault_record_name`            | `""`    | Must be `vault`; the custom domain is always `vault.<zone>`.                                                                                          |
 | `hvn_id`                       | `""`    | Existing HCP HVN. Read-only.                                                                                                                          |
@@ -96,9 +95,11 @@ Cross-field rules, also checked at plan time:
   `vault_tier = ""`, `min_vault_version = null`, and every audit input off.
 - `create_hvn_peering = true` needs `existing_hvn_peering_id = ""`.
 - `manage_peering_routes = true` needs `hcp_organization_id` set and a current
-  `HCP_API_TOKEN` in the shell; the plan reads the HVN's existing routes so a
-  route already in place is adopted, not duplicated. A route already present for
-  a different peering fails the plan rather than being rewritten.
+  `HCP_API_TOKEN` plus `HCP_API_ADDRESS` (HCP API host, no scheme) exported in
+  the shell; the plan reads the HVN's existing routes so a route already in place
+  is adopted, not duplicated. A route already present for a different peering
+  fails the plan rather than being rewritten. Both env vars are set in
+  [Prepare-Environment.md](Prepare-Environment.md).
 - The Client VPN needs `vpc_id`, `subnet_id`, and `client_vpn_cidr` with no
   address-range overlap; a peering needs `vpc_id` and `subnet_id` with no
   VPC / HVN overlap.
