@@ -12,6 +12,15 @@ from **Doormat → Accounts → AWS → Individual Sandbox Account**.
 On the HCP side, you need membership of the organization and project that own the
 HVN and the Vault cluster that will receive the custom domain.
 
+You also need an HCP service principal with **Contributor** on the Vault service
+in that project. This configuration uses the `hcp` Terraform provider to
+provision (and read) the Vault cluster, and the provider authenticates with the
+service principal's `HCP_CLIENT_ID` and `HCP_CLIENT_SECRET` rather than your user
+login — `terraform init`, `plan`, and `apply` all fail without them. Create one
+under HCP Portal → **Access control (IAM)** → **Service principals**, grant it
+**Contributor** on Vault, and generate a key. See
+[Prepare-Environment.md](Prepare-Environment.md) for where the credentials go.
+
 ### LaunchDarkly flags
 
 The custom-domain feature is gated per project. Add your project to both flags
@@ -100,7 +109,9 @@ them; it does not create or delete them.
 
 ## Configure credentials
 
-Credentials belong in your shell, and additionally in the project's Terraform
-variable set when you use HCP Terraform remote execution. See
-[Prepare-Environment.md](Prepare-Environment.md) to configure your shell before
-you run any Terraform command or call the custom-domain API.
+You need AWS sandbox credentials and the HCP service principal's `HCP_CLIENT_ID` /
+`HCP_CLIENT_SECRET` in your shell for every Terraform command. With HCP Terraform
+remote execution the same credentials must also exist as workspace variables (or
+on a variable set applied to the workspace). See
+[Prepare-Environment.md](Prepare-Environment.md) to configure both before you run
+any Terraform command or call the custom-domain API.
