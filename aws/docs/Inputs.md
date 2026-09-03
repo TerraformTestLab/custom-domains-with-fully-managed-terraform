@@ -9,29 +9,29 @@ from is in [Prerequisites.md](Prerequisites.md#resource-dependencies).
 
 ## Variables
 
-| Variable                       | Default | Purpose                                                                                                                                               |
-|--------------------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `aws_region`                   | `""`    | Region for every AWS resource. Must match the HVN, VPC, and subnet region.                                                                            |
-| `hcp_project_id`               | `""`    | HCP project that owns the HVN and cluster.                                                                                                            |
-| `hcp_organization_id`          | `""`    | HCP organization that owns the HVN. Required only when `manage_peering_routes = true` — the plan reads existing HVN routes from the HCP API.          |
-| `route53_hosted_zone_name`     | `""`    | Existing public Route 53 zone the records are created in.                                                                                             |
-| `vault_record_name`            | `""`    | Must be `vault`; the custom domain is always `vault.<zone>`.                                                                                          |
-| `hvn_id`                       | `""`    | Existing HCP HVN. Read-only.                                                                                                                          |
-| `cluster_id`                   | `""`    | The cluster to manage — a new name when `create_cluster = true`, an existing ID otherwise.                                                            |
-| `create_cluster`               | `false` | `true` creates the cluster (needs `vault_tier`); `false` adopts `cluster_id` read-only.                                                               |
-| `vault_tier`                   | `""`    | Cluster tier. Required when creating, `""` when adopting.                                                                                             |
-| `min_vault_version`            | `null`  | Minimum Vault version when creating; `null` picks the latest.                                                                                         |
-| `public_link`                  | —       | `true` for a public endpoint — no Client VPN or peering, ever. `false` for a private endpoint.                                                        |
-| `enable_vpn`                   | —       | Private clusters only. `true` creates the Client VPN, `false` skips it.                                                                               |
-| `create_hvn_peering`           | —       | Private clusters only. `true` creates the peering; `false` adopts `existing_hvn_peering_id`, or manages no peering if that is empty.                  |
-| `existing_hvn_peering_id`      | `""`    | An HVN ⇄ VPC peering established outside this configuration, adopted read-only. Must be `""` when `create_hvn_peering = true`.                        |
-| `manage_peering_routes`        | —       | Required once a peering is created or adopted. `true` writes both route directions, `false` writes neither.                                           |
-| `hvn_route_table_ids`          | `[]`    | Route tables to carry the HVN route. `[]` uses the one associated with `subnet_id`. Applies only when `manage_peering_routes = true`.                 |
-| `vpc_id`                       | `""`    | Existing VPC. Required when the Client VPN or a peering is active.                                                                                    |
-| `subnet_id`                    | `""`    | Private subnet inside `vpc_id`. Required alongside `vpc_id`.                                                                                          |
-| `client_vpn_cidr`              | `""`    | Address pool for VPN clients — a private block of `/22` or larger that does not overlap the VPC or HVN range. Required when the Client VPN is active. |
-| `audit_log_enabled`            | `false` | Master switch for audit-log streaming. See [Audit-log inputs](#audit-log-inputs).                                                                     |
-| `cloudwatch_audit_log_enabled` | `false` | With audit on: `true` has Terraform create the CloudWatch destination, `false` points at an external sink.                                            |
+| Variable                       | Default | Purpose                                                                                                                                                                                                           |
+|--------------------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `aws_region`                   | `""`    | Region for every AWS resource. Must match the HVN, VPC, and subnet region.                                                                                                                                        |
+| `hcp_project_id`               | `""`    | HCP project that owns the HVN and cluster.                                                                                                                                                                        |
+| `hcp_organization_id`          | `""`    | HCP organization that owns the HVN. Required only when `manage_peering_routes = true` — the plan reads existing HVN routes from the HCP API.                                                                      |
+| `route53_hosted_zone_name`     | `""`    | Existing public Route 53 zone the records are created in.                                                                                                                                                         |
+| `vault_record_name`            | `""`    | Must be `vault`; the custom domain is always `vault.<zone>`.                                                                                                                                                      |
+| `hvn_id`                       | `""`    | Existing HCP HVN. Read-only.                                                                                                                                                                                      |
+| `cluster_id`                   | `""`    | The cluster to manage — a new name when `create_cluster = true`, an existing ID otherwise.                                                                                                                        |
+| `create_cluster`               | `false` | `true` creates the cluster (needs `vault_tier`); `false` adopts `cluster_id` read-only.                                                                                                                           |
+| `vault_tier`                   | `""`    | Cluster tier. Required when creating, `""` when adopting.                                                                                                                                                         |
+| `min_vault_version`            | `null`  | Minimum Vault version when creating; `null` picks the latest.                                                                                                                                                     |
+| `public_link`                  | —       | `true` for a public endpoint — no Client VPN or peering, ever. `false` for a private endpoint.                                                                                                                    |
+| `enable_vpn`                   | —       | Private clusters only. `true` creates the Client VPN, `false` skips it.                                                                                                                                           |
+| `create_hvn_peering`           | —       | Private clusters only. `true` creates the peering; `false` adopts `existing_hvn_peering_id`, or manages no peering if that is empty.                                                                              |
+| `existing_hvn_peering_id`      | `""`    | An HVN ⇄ VPC peering established outside this configuration, adopted read-only. Must be `""` when `create_hvn_peering = true`.                                                                                    |
+| `manage_peering_routes`        | —       | Required once a peering is created or adopted. `true` writes both route directions, `false` writes neither.                                                                                                       |
+| `hvn_route_table_ids`          | `[]`    | Route tables to carry the HVN route. `[]` uses the one associated with `subnet_id`. Applies only when `manage_peering_routes = true`.                                                                             |
+| `vpc_id`                       | `""`    | Existing VPC. Required when the Client VPN or a peering is active. Ignored, and not format-checked, when `public_link = true`.                                                                                    |
+| `subnet_id`                    | `""`    | Private subnet inside `vpc_id`. Required alongside `vpc_id`. Ignored, and not format-checked, when `public_link = true`.                                                                                          |
+| `client_vpn_cidr`              | `""`    | Address pool for VPN clients — a private block of `/22` or larger that does not overlap the VPC or HVN range. Required when the Client VPN is active. Ignored, and not format-checked, when `public_link = true`. |
+| `audit_log_enabled`            | `false` | Master switch for audit-log streaming. See [Audit-log inputs](#audit-log-inputs).                                                                                                                                 |
+| `cloudwatch_audit_log_enabled` | `false` | With audit on: `true` has Terraform create the CloudWatch destination, `false` points at an external sink.                                                                                                        |
 
 `public_link`, `enable_vpn`, `create_hvn_peering`, and `manage_peering_routes`
 have no default. The plan fails until each one that applies is set; a public
@@ -78,8 +78,9 @@ full control model and the per-sink fields are in
 | `cluster_id`, `hvn_id`, `existing_hvn_peering_id`        | HCP slug: 3–36 lowercase letters, digits, or hyphens                                                                 |
 | `vault_tier`                                             | `""`, or one of `dev`, `starter_small`, `standard_small` / `_medium` / `_large`, `plus_small` / `_medium` / `_large` |
 | `min_vault_version`                                      | `vX.Y.Z` or `null`                                                                                                   |
-| `vpc_id` / `subnet_id` / `hvn_route_table_ids[*]`        | `""` or the matching `vpc-` / `subnet-` / `rtb-` ID                                                                  |
-| `client_vpn_cidr`                                        | `""`, or an IPv4 CIDR of `/22` or larger                                                                             |
+| `vpc_id` / `subnet_id`                                   | `""` or the matching `vpc-` / `subnet-` ID — not checked at all when `public_link = true`                            |
+| `hvn_route_table_ids[*]`                                 | a `rtb-` ID                                                                                                          |
+| `client_vpn_cidr`                                        | `""`, or an IPv4 CIDR of `/22` or larger — not checked at all when `public_link = true`                              |
 | `cloudwatch_audit_log_retention_days`                    | a retention value CloudWatch allows                                                                                  |
 | `cloudwatch_audit_log_group_name`                        | `""`, or up to 512 characters from `[-A-Za-z0-9_./#]`                                                                |
 | `audit_log_sink_count`                                   | `1`                                                                                                                  |
@@ -103,6 +104,11 @@ Cross-field rules, also checked at plan time:
 - The Client VPN needs `vpc_id`, `subnet_id`, and `client_vpn_cidr` with no
   address-range overlap; a peering needs `vpc_id` and `subnet_id` with no
   VPC / HVN overlap.
+- `public_link = true` skips the networking checks: the VPN and peering are
+  never created, `vpc_id` / `subnet_id` / `client_vpn_cidr` are not resolved or
+  format-checked, and any networking input that is set only raises a
+  non-blocking warning. A leftover `REPLACE_WITH_…` placeholder in those three
+  does not fail the plan.
 - Audit logging on needs exactly one destination: managed CloudWatch, or one
   `audit_log_<vendor>` object.
 

@@ -200,6 +200,28 @@ run "public_cluster_ignores_set_peering_vars" {
   expect_failures = [check.public_cluster_networking_ignored]
 }
 
+run "public_cluster_ignores_invalid_networking_ids" {
+  command = plan
+  variables {
+    public_link = true
+    # Values left at their terraform.tfvars placeholders: neither required nor
+    # format-checked on a public cluster, so the plan must not fail on them.
+    vpc_id          = "REPLACE_WITH_VPC_ID"
+    subnet_id       = "REPLACE_WITH_SUBNET_ID"
+    client_vpn_cidr = "REPLACE_WITH_CLIENT_VPN_CIDR"
+  }
+  assert {
+    condition     = output.vpn_enabled == false && output.hvn_peering_enabled == false
+    error_message = "public cluster must ignore networking inputs entirely"
+  }
+  assert {
+    condition     = output.vpc_cidr == ""
+    error_message = "public cluster must not resolve the VPC (vpc_id is ignored)"
+  }
+  # The values are still surfaced as an advisory warning, just not a hard error.
+  expect_failures = [check.public_cluster_networking_ignored]
+}
+
 ########################  private cluster - VPN opt-in  #######################
 
 run "private_vpn_opt_in" {

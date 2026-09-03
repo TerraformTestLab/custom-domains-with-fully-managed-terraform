@@ -31,8 +31,10 @@ locals {
   vault_target_hostname = module.vault_cluster.vault_target_hostname
 
   # Network facts read from the real VPC / HVN instead of trusted from input.
+  # A public cluster never touches the VPC, so vpc_id is not resolved (and any
+  # value it carries - including a leftover placeholder - is ignored).
   hvn_cidr = data.hcp_hvn.check.cidr_block
-  vpc_cidr = var.vpc_id != "" ? data.aws_vpc.check[0].cidr_block : ""
+  vpc_cidr = local.is_private_endpoint && var.vpc_id != "" ? data.aws_vpc.check[0].cidr_block : ""
 
   # Audit logging
   audit_manage_cloudwatch = var.audit_log_enabled && var.cloudwatch_audit_log_enabled
@@ -55,12 +57,12 @@ data "hcp_hvn" "check" {
 }
 
 data "aws_vpc" "check" {
-  count = var.vpc_id != "" ? 1 : 0
+  count = local.is_private_endpoint && var.vpc_id != "" ? 1 : 0
   id    = var.vpc_id
 }
 
 data "aws_subnet" "check" {
-  count = var.vpc_id != "" && var.subnet_id != "" ? 1 : 0
+  count = local.is_private_endpoint && var.vpc_id != "" && var.subnet_id != "" ? 1 : 0
   id    = var.subnet_id
 
   lifecycle {
@@ -206,9 +208,12 @@ check "public_cluster_networking_ignored" {
         && coalesce(var.manage_peering_routes, false) != true
         && var.existing_hvn_peering_id == ""
         && length(var.hvn_route_table_ids) == 0
+        && var.vpc_id == ""
+        && var.subnet_id == ""
+        && var.client_vpn_cidr == ""
       )
     )
-    error_message = "public_link = true: no Client VPN or HVN peering is ever created, so enable_vpn / create_hvn_peering / manage_peering_routes / existing_hvn_peering_id / hvn_route_table_ids are ignored."
+    error_message = "public_link = true: no Client VPN or HVN peering is ever created, so enable_vpn / create_hvn_peering / manage_peering_routes / existing_hvn_peering_id / hvn_route_table_ids / vpc_id / subnet_id / client_vpn_cidr are ignored (their format is not even checked)."
   }
 }
 

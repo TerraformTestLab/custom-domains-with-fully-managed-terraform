@@ -305,34 +305,36 @@ variable "audit_log_http" {
 ###############################################################################
 
 variable "vpc_id" {
-  description = "ID of the AWS VPC connected to the HCP HVN. Required when the VPN or HVN peering is active."
+  description = "ID of the AWS VPC connected to the HCP HVN. Required when the VPN or HVN peering is active. Ignored - and its format left unchecked - when public_link = true, so a leftover placeholder does not block a public-endpoint plan."
   type        = string
   default     = ""
 
   validation {
-    condition     = var.vpc_id == "" || can(regex("^vpc-([0-9a-f]{8}|[0-9a-f]{17})$", var.vpc_id))
+    # public_link = true (or not yet set) never touches the VPC, so the format
+    # is only enforced for a private cluster.
+    condition     = var.public_link != false || var.vpc_id == "" || can(regex("^vpc-([0-9a-f]{8}|[0-9a-f]{17})$", var.vpc_id))
     error_message = "vpc_id must be \"\" or a valid VPC ID (vpc- followed by 8 or 17 hex chars)."
   }
 }
 
 variable "subnet_id" {
-  description = "ID of a private subnet inside vpc_id for the Client VPN association / HVN route table. Required when the VPN or HVN peering is active."
+  description = "ID of a private subnet inside vpc_id for the Client VPN association / HVN route table. Required when the VPN or HVN peering is active. Ignored - and its format left unchecked - when public_link = true."
   type        = string
   default     = ""
 
   validation {
-    condition     = var.subnet_id == "" || can(regex("^subnet-([0-9a-f]{8}|[0-9a-f]{17})$", var.subnet_id))
+    condition     = var.public_link != false || var.subnet_id == "" || can(regex("^subnet-([0-9a-f]{8}|[0-9a-f]{17})$", var.subnet_id))
     error_message = "subnet_id must be \"\" or a valid subnet ID (subnet- followed by 8 or 17 hex chars)."
   }
 }
 
 variable "client_vpn_cidr" {
-  description = "Non-overlapping IPv4 CIDR block for VPN clients (/22 or larger). Required when the Client VPN is active. Overlap with the VPC or HVN CIDR fails the plan."
+  description = "Non-overlapping IPv4 CIDR block for VPN clients (/22 or larger). Required when the Client VPN is active. Overlap with the VPC or HVN CIDR fails the plan. Ignored - and its format left unchecked - when public_link = true."
   type        = string
   default     = ""
 
   validation {
-    condition     = var.client_vpn_cidr == "" || (can(cidrhost(var.client_vpn_cidr, 0)) && tonumber(split("/", var.client_vpn_cidr)[1]) <= 22)
+    condition     = var.public_link != false || var.client_vpn_cidr == "" || (can(cidrhost(var.client_vpn_cidr, 0)) && tonumber(split("/", var.client_vpn_cidr)[1]) <= 22)
     error_message = "client_vpn_cidr must be \"\" or a valid IPv4 CIDR with a prefix of /22 or larger (<= 22)."
   }
 }

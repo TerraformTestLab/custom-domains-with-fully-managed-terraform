@@ -16,6 +16,7 @@ crash.*.log
 *.tfvars.json
 *.auto.tfvars
 *.auto.tfvars.json
+!*-sample.tfvars
 
 # Plan output files
 *.tfplan
@@ -28,3 +29,4 @@ override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
+*.txt
