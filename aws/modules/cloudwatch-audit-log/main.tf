@@ -1,5 +1,5 @@
 locals {
-  create         = var.audit_log_enabled && var.cloudwatch_audit_log_enabled
+  create         = var.audit_log_enabled
   log_group_name = var.log_group_name != "" ? var.log_group_name : "/hcp/vault/${var.cluster_id}/audit"
   iam_user_name  = "hcp-vault-${var.cluster_id}-audit"
 }

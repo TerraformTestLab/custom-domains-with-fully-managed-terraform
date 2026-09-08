@@ -51,10 +51,11 @@ done
 ## Resource dependencies
 
 The configuration works with a fixed set of resources: an HCP project and HVN, a
-Route 53 hosted zone, a Vault cluster, an AWS VPC and subnet, an HVN peering with
-its routes, and an audit-log destination. Each one is either supplied by you as
-an existing resource or created by Terraform. The three tables below group the
-`terraform.tfvars` variables by which case applies.
+Route 53 hosted zone, a Vault cluster, an AWS VPC and subnet, and an HVN peering
+with its routes. Each one is either supplied by you as an existing resource or
+created by Terraform; the optional CloudWatch audit-log destination is always
+created by Terraform. The three tables below group the `terraform.tfvars`
+variables by which case applies.
 
 ### Supplied by you
 
@@ -92,7 +93,7 @@ None of them is a portal lookup.
 | `create_hvn_peering`           | `true`    | The HVN ⇄ VPC peering connection and its AWS-side accepter. `existing_hvn_peering_id` must stay empty                                                                                                                                             |
 | `manage_peering_routes`        | `true`    | The route to the HVN CIDR on the AWS side and the route to the VPC CIDR on the HVN side, whether the peering was created or adopted                                                                                                               |
 | `enable_vpn`                   | `true`    | The AWS Client VPN endpoint, its mTLS certificates, and the `.ovpn` profile. Needs `vpc_id` and `subnet_id` (first table), plus a `client_vpn_cidr` you choose: a private IPv4 block of `/22` or larger that does not overlap the VPC or HVN CIDR |
-| `cloudwatch_audit_log_enabled` | `true`    | A CloudWatch log group and a dedicated IAM user for audit-log streaming. Requires `audit_log_enabled = true`                                                                                                                                      |
+| `audit_log_enabled`            | `true`    | A CloudWatch log group, a dedicated least-privilege IAM user, and an access key; the cluster's audit log is streamed to it. Only applied to a cluster this config creates                                                                          |
 
 ### Optionally folded in as an existing resource
 
@@ -105,7 +106,6 @@ them; it does not create or delete them.
 | `cluster_id`, with `create_cluster = false`                  | The HCP Vault cluster, read-only                                 | `vault_tier` must be `""` and `min_vault_version` unset                                                                                               | HCP Portal → **Vault** → the cluster → **Cluster ID** on the Overview tab, also the last segment of the cluster URL             |
 | `existing_hvn_peering_id`, with `create_hvn_peering = false` | An HVN ⇄ VPC peering established outside this configuration      | Mutually exclusive with `create_hvn_peering = true`; leaving it `""` as well means no peering is managed and connectivity is assumed to exist already | HCP Portal → **HashiCorp Virtual Networks** → your HVN → **Peerings** tab → the **Peering ID** column                           |
 | `hvn_route_table_ids`                                        | Specific AWS route tables that should carry the route to the HVN | Consulted only when `manage_peering_routes = true`; `[]` uses the route table associated with `subnet_id`                                             | AWS Console → **VPC** → **Route tables** → the **Route table ID** column (`rtb-…`) for the tables serving your workload subnets |
-| One `audit_log_<vendor>` object                              | Your existing external log or SIEM endpoint                      | Only with `audit_log_enabled = true` and `cloudwatch_audit_log_enabled = false`; exactly one may be set                                               | Your vendor's console — the API key, endpoint URL, or token it issues                                                           |
 
 ## Configure credentials
 

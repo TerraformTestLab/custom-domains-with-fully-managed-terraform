@@ -2,11 +2,6 @@ output "config" {
   description = "audit_log_config payload for hcp_vault_cluster: single-element list when enabled, otherwise []."
   value       = local.config
   sensitive   = true
-
-  precondition {
-    condition     = !var.cloudwatch_audit_log_enabled || var.audit_log_enabled
-    error_message = "cloudwatch_audit_log_enabled = true requires audit_log_enabled = true - the Terraform-managed CloudWatch audit destination does nothing while the master switch is off."
-  }
 }
 
 output "enabled" {

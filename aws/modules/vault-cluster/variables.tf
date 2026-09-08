@@ -59,7 +59,13 @@ variable "audit_log_enabled" {
 }
 
 variable "audit_log_config" {
-  description = "audit_log_config block payload (single-element list) or []. Only applied when create_cluster is true."
-  type        = list(any)
-  default     = []
+  description = "audit_log_config block payload from the cloudwatch-audit-log module: a single-element list of cloudwatch_* attributes, or []. Only applied when create_cluster is true."
+  type = list(object({
+    cloudwatch_access_key_id     = string
+    cloudwatch_group_name        = string
+    cloudwatch_region            = string
+    cloudwatch_secret_access_key = string
+  }))
+  default   = []
+  sensitive = true
 }

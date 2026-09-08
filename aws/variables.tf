@@ -113,36 +113,17 @@ variable "min_vault_version" {
 ###############################################################################
 # Vault audit log streaming
 #
-#   audit_log_enabled = false  -> no audit logging; nothing else here matters.
-#   audit_log_enabled = true   -> pick a destination:
-#     cloudwatch_audit_log_enabled = true  -> Terraform creates + manages it.
-#     cloudwatch_audit_log_enabled = false -> supply exactly audit_log_sink_count
-#                                             audit_log_<vendor> object(s).
+#   audit_log_enabled = false -> no audit logging; nothing else here matters.
+#   audit_log_enabled = true  -> Terraform creates + manages the CloudWatch
+#                                destination (log group + dedicated IAM user/key)
+#                                and streams the cluster's audit log to it.
 #
-#   Enforced by preconditions in main.tf: master switch required, destination
-#   resolvable, no CloudWatch/vendor clash, not while adopting a cluster.
+#   Enforced by a precondition in the vault-cluster module: audit logging can
+#   only be configured on a cluster this configuration creates.
 ###############################################################################
 
 variable "audit_log_enabled" {
-  description = "Master switch for Vault audit-log streaming. false -> no audit_log_config on the cluster."
-  type        = bool
-  default     = false
-}
-
-variable "audit_log_sink_count" {
-  description = "How many external audit_log_<vendor> objects must be set when the external-sink path is active. HCP Vault accepts exactly one audit_log_config, so this is 1."
-  type        = number
-  default     = 1
-
-  validation {
-    condition     = var.audit_log_sink_count == 1
-    error_message = "audit_log_sink_count: HCP Vault accepts exactly one audit_log_config sink - only 1 is supported."
-  }
-}
-
-# --- Destination A: Terraform-managed CloudWatch (cloudwatch-audit-log module) ---
-variable "cloudwatch_audit_log_enabled" {
-  description = "When audit_log_enabled is true: have Terraform create + manage the CloudWatch destination (log group + dedicated IAM user/key) instead of pointing at an external sink."
+  description = "Master switch for Vault audit-log streaming to a Terraform-managed CloudWatch destination. false -> no audit_log_config on the cluster."
   type        = bool
   default     = false
 }
@@ -166,137 +147,6 @@ variable "cloudwatch_audit_log_retention_days" {
   validation {
     condition     = contains([0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653], var.cloudwatch_audit_log_retention_days)
     error_message = "cloudwatch_audit_log_retention_days must be a CloudWatch-allowed value: 0,1,3,5,7,14,30,60,90,120,150,180,365,400,545,731,1096,1827,2192,2557,2922,3288,3653."
-  }
-}
-
-# --- Destination B: external sink (vault-audit-log module) ---
-# Used when audit_log_enabled = true AND cloudwatch_audit_log_enabled = false.
-# Set exactly one of the objects below.
-variable "audit_log_cloudwatch" {
-  description = "Point at a CloudWatch log group + IAM credentials you manage yourself. Use cloudwatch_audit_log_enabled instead to have Terraform create one."
-  type = object({
-    region            = string
-    group_name        = string
-    stream_name       = optional(string)
-    access_key_id     = optional(string)
-    secret_access_key = optional(string)
-  })
-  default   = null
-  sensitive = true
-
-  validation {
-    condition     = var.audit_log_cloudwatch == null || can(regex("^[a-z]{2}-[a-z]+-\\d$", var.audit_log_cloudwatch.region))
-    error_message = "audit_log_cloudwatch.region must look like an AWS region, e.g. \"us-west-2\"."
-  }
-  validation {
-    condition     = var.audit_log_cloudwatch == null || ((var.audit_log_cloudwatch.access_key_id == null) == (var.audit_log_cloudwatch.secret_access_key == null))
-    error_message = "audit_log_cloudwatch: set access_key_id and secret_access_key together, or neither."
-  }
-}
-
-variable "audit_log_datadog" {
-  description = "Datadog audit-log destination."
-  type = object({
-    api_key = string
-    region  = string
-  })
-  default   = null
-  sensitive = true
-
-  validation {
-    condition     = var.audit_log_datadog == null || contains(["us1", "us3", "us5", "eu1", "ap1", "us1-fed"], var.audit_log_datadog.region)
-    error_message = "audit_log_datadog.region must be one of: us1, us3, us5, eu1, ap1, us1-fed."
-  }
-}
-
-variable "audit_log_elasticsearch" {
-  description = "Elasticsearch audit-log destination."
-  type = object({
-    endpoint = string
-    dataset  = optional(string)
-    user     = string
-    password = string
-  })
-  default   = null
-  sensitive = true
-
-  validation {
-    condition     = var.audit_log_elasticsearch == null || startswith(var.audit_log_elasticsearch.endpoint, "https://")
-    error_message = "audit_log_elasticsearch.endpoint must be an https:// URL."
-  }
-}
-
-variable "audit_log_grafana" {
-  description = "Grafana Loki audit-log destination."
-  type = object({
-    endpoint = string
-    user     = string
-    password = string
-  })
-  default   = null
-  sensitive = true
-
-  validation {
-    condition     = var.audit_log_grafana == null || startswith(var.audit_log_grafana.endpoint, "http")
-    error_message = "audit_log_grafana.endpoint must be a URL."
-  }
-}
-
-variable "audit_log_splunk" {
-  description = "Splunk HTTP Event Collector audit-log destination."
-  type = object({
-    hec_endpoint = string
-    token        = string
-  })
-  default   = null
-  sensitive = true
-
-  validation {
-    condition     = var.audit_log_splunk == null || startswith(var.audit_log_splunk.hec_endpoint, "http")
-    error_message = "audit_log_splunk.hec_endpoint must be a URL."
-  }
-}
-
-variable "audit_log_newrelic" {
-  description = "New Relic audit-log destination."
-  type = object({
-    account_id  = string
-    license_key = string
-    region      = string
-  })
-  default   = null
-  sensitive = true
-
-  validation {
-    condition     = var.audit_log_newrelic == null || contains(["US", "EU"], upper(var.audit_log_newrelic.region))
-    error_message = "audit_log_newrelic.region must be US or EU."
-  }
-}
-
-variable "audit_log_http" {
-  description = "Generic HTTP audit-log destination."
-  type = object({
-    uri            = string
-    method         = optional(string)
-    codec          = optional(string)
-    compression    = optional(bool)
-    headers        = optional(map(string))
-    basic_user     = optional(string)
-    basic_password = optional(string)
-    bearer_token   = optional(string)
-    payload_prefix = optional(string)
-    payload_suffix = optional(string)
-  })
-  default   = null
-  sensitive = true
-
-  validation {
-    condition = var.audit_log_http == null || (
-      startswith(var.audit_log_http.uri, "http")
-      && (var.audit_log_http.method == null || contains(["POST", "PUT"], upper(var.audit_log_http.method)))
-      && (var.audit_log_http.codec == null || contains(["json", "ndjson"], lower(var.audit_log_http.codec)))
-    )
-    error_message = "audit_log_http: uri must be a URL; method (if set) POST or PUT; codec (if set) json or ndjson."
   }
 }
 

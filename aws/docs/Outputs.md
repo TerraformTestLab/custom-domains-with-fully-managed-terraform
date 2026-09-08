@@ -60,7 +60,7 @@ All `null` unless `enable_vpn = true`.
 
 | Output                            | Type          | Description                                                                                |
 |-----------------------------------|---------------|--------------------------------------------------------------------------------------------|
-| `audit_log_enabled`               | bool          | Any audit-log streaming is active                                                          |
-| `audit_log_destination`           | string        | Active sink: `cloudwatch`, the external vendor name, or `""`                               |
-| `audit_log_cloudwatch_group_name` | string / null | CloudWatch log group receiving the stream; `null` unless the managed-CloudWatch path is on |
-| `audit_log_cloudwatch_iam_user`   | string / null | IAM user HCP uses to write to CloudWatch; `null` unless the managed-CloudWatch path is on  |
+| `audit_log_enabled`               | bool          | Audit-log streaming to CloudWatch is active                                   |
+| `audit_log_destination`           | string        | `cloudwatch` when streaming is on, otherwise `""`                             |
+| `audit_log_cloudwatch_group_name` | string / null | CloudWatch log group receiving the stream; `null` when audit logging is off   |
+| `audit_log_cloudwatch_iam_user`   | string / null | IAM user HCP uses to write to CloudWatch; `null` when audit logging is off    |

@@ -1,11 +1,5 @@
 variable "audit_log_enabled" {
-  description = "The root audit_log_enabled master switch. This module creates resources only when it is true AND cloudwatch_audit_log_enabled is true."
-  type        = bool
-  default     = false
-}
-
-variable "cloudwatch_audit_log_enabled" {
-  description = "Whether the caller asked Terraform to own the CloudWatch audit destination. Requires audit_log_enabled = true (enforced by a precondition on the config output)."
+  description = "The root audit_log_enabled master switch. This module creates the CloudWatch log group, IAM user, and access key when it is true."
   type        = bool
   default     = false
 }

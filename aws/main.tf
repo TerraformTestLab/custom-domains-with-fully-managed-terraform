@@ -36,10 +36,8 @@ locals {
   hvn_cidr = data.hcp_hvn.check.cidr_block
   vpc_cidr = local.is_private_endpoint && var.vpc_id != "" ? data.aws_vpc.check[0].cidr_block : ""
 
-  # Audit logging
-  audit_manage_cloudwatch = var.audit_log_enabled && var.cloudwatch_audit_log_enabled
-  audit_use_external_sink = var.audit_log_enabled && !var.cloudwatch_audit_log_enabled
-  audit_log_config        = local.audit_manage_cloudwatch ? module.cloudwatch_audit_log.config : module.vault_audit_log.config
+  # Audit logging - Terraform-managed CloudWatch is the only destination.
+  audit_log_config = module.cloudwatch_audit_log.config
 }
 
 ###############################################################################
@@ -74,30 +72,16 @@ data "aws_subnet" "check" {
 }
 
 ###############################################################################
-# Audit log modules
+# Audit log module
 ###############################################################################
 module "cloudwatch_audit_log" {
   source = "./modules/cloudwatch-audit-log"
 
-  audit_log_enabled            = var.audit_log_enabled
-  cloudwatch_audit_log_enabled = var.cloudwatch_audit_log_enabled
-  cluster_id                   = var.cluster_id
-  aws_region                   = var.aws_region
-  log_group_name               = var.cloudwatch_audit_log_group_name
-  retention_in_days            = var.cloudwatch_audit_log_retention_days
-}
-
-module "vault_audit_log" {
-  source = "./modules/vault-audit-log"
-
-  enabled       = local.audit_use_external_sink
-  cloudwatch    = var.audit_log_cloudwatch
-  datadog       = var.audit_log_datadog
-  elasticsearch = var.audit_log_elasticsearch
-  grafana       = var.audit_log_grafana
-  splunk        = var.audit_log_splunk
-  newrelic      = var.audit_log_newrelic
-  http          = var.audit_log_http
+  audit_log_enabled = var.audit_log_enabled
+  cluster_id        = var.cluster_id
+  aws_region        = var.aws_region
+  log_group_name    = var.cloudwatch_audit_log_group_name
+  retention_in_days = var.cloudwatch_audit_log_retention_days
 }
 
 ###############################################################################
@@ -128,25 +112,6 @@ resource "terraform_data" "root_preflight" {
         || var.manage_peering_routes != null
       )
       error_message = "manage_peering_routes must be set explicitly (true or false) when a peering is created or adopted (create_hvn_peering = true, or existing_hvn_peering_id set)."
-    }
-  }
-}
-
-###############################################################################
-# Audit preflight - the two cross-module rules that need both audit modules'
-# state at once. The single-module audit rules live in their modules
-# (cloudwatch_audit_log_enabled => audit_log_enabled in cloudwatch-audit-log;
-# audit_log_enabled => create_cluster in vault-cluster).
-###############################################################################
-resource "terraform_data" "audit_preflight" {
-  lifecycle {
-    precondition {
-      condition     = !var.audit_log_enabled || var.cloudwatch_audit_log_enabled || module.vault_audit_log.sink_count == var.audit_log_sink_count
-      error_message = "audit_log_enabled = true needs a destination: set cloudwatch_audit_log_enabled = true, or provide exactly ${var.audit_log_sink_count} audit_log_<vendor> object(s). Found: ${module.vault_audit_log.sink_count}."
-    }
-    precondition {
-      condition     = !(var.cloudwatch_audit_log_enabled && module.vault_audit_log.sink_count > 0)
-      error_message = "cloudwatch_audit_log_enabled = true manages its own destination - remove the audit_log_<vendor> object(s) (${module.vault_audit_log.sink_count} set)."
     }
   }
 }

@@ -30,8 +30,7 @@ from is in [Prerequisites.md](Prerequisites.md#resource-dependencies).
 | `vpc_id`                       | `""`    | Existing VPC. Required when the Client VPN or a peering is active. Ignored, and not format-checked, when `public_link = true`.                                                                                    |
 | `subnet_id`                    | `""`    | Private subnet inside `vpc_id`. Required alongside `vpc_id`. Ignored, and not format-checked, when `public_link = true`.                                                                                          |
 | `client_vpn_cidr`              | `""`    | Address pool for VPN clients — a private block of `/22` or larger that does not overlap the VPC or HVN range. Required when the Client VPN is active. Ignored, and not format-checked, when `public_link = true`. |
-| `audit_log_enabled`            | `false` | Master switch for audit-log streaming. See [Audit-log inputs](#audit-log-inputs).                                                                                                                                 |
-| `cloudwatch_audit_log_enabled` | `false` | With audit on: `true` has Terraform create the CloudWatch destination, `false` points at an external sink.                                                                                                        |
+| `audit_log_enabled`            | `false` | Master switch for audit-log streaming to a Terraform-managed CloudWatch destination. See [Audit-log inputs](#audit-log-inputs).                                                                                    |
 
 `public_link`, `enable_vpn`, `create_hvn_peering`, and `manage_peering_routes`
 have no default. The plan fails until each one that applies is set; a public
@@ -39,29 +38,17 @@ cluster needs only `public_link`. See [Networking enablement](#networking-enable
 
 ## Audit-log inputs
 
-Consulted only when `audit_log_enabled = true`.
-
-- With `cloudwatch_audit_log_enabled = true`, Terraform creates the CloudWatch
-  log group and IAM user; `cloudwatch_audit_log_group_name` and
-  `cloudwatch_audit_log_retention_days` tune them.
-- With `cloudwatch_audit_log_enabled = false`, set exactly one
-  `audit_log_<vendor>` object for a sink that already exists.
+Consulted only when `audit_log_enabled = true`. Terraform then creates the
+CloudWatch log group, a dedicated least-privilege IAM user, and an access key,
+and streams the cluster's audit log to it.
 
 | Variable                              | Default | Purpose                                                               |
 |---------------------------------------|---------|-----------------------------------------------------------------------|
 | `cloudwatch_audit_log_group_name`     | `""`    | Managed log group name. `""` derives `/hcp/vault/<cluster_id>/audit`. |
 | `cloudwatch_audit_log_retention_days` | `30`    | Retention in days for the managed log group; `0` keeps forever.       |
-| `audit_log_sink_count`                | `1`     | External sinks expected. HCP accepts one.                             |
-| `audit_log_cloudwatch`                | `null`  | External sink — a CloudWatch group and IAM key you manage yourself.   |
-| `audit_log_datadog`                   | `null`  | External sink — Datadog.                                              |
-| `audit_log_elasticsearch`             | `null`  | External sink — Elasticsearch.                                        |
-| `audit_log_grafana`                   | `null`  | External sink — Grafana Loki.                                         |
-| `audit_log_splunk`                    | `null`  | External sink — Splunk HTTP Event Collector.                          |
-| `audit_log_newrelic`                  | `null`  | External sink — New Relic.                                            |
-| `audit_log_http`                      | `null`  | External sink — generic HTTP.                                         |
 
 Audit configuration applies only to a cluster this configuration creates. The
-full control model and the per-sink fields are in
+full control model is in
 [Optional-Reading.md](Optional-Reading.md#audit-logging-configuration).
 
 ## Validation
@@ -70,7 +57,7 @@ full control model and the per-sink fields are in
 
 | Variable                                                 | Accepted value                                                                                                       |
 |----------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------|
-| `aws_region`, `audit_log_cloudwatch.region`              | AWS region code, for example `us-west-2`                                                                             |
+| `aws_region`                                             | AWS region code, for example `us-west-2`                                                                             |
 | `hcp_project_id`                                         | UUID                                                                                                                 |
 | `hcp_organization_id`                                    | `""` or a UUID                                                                                                       |
 | `route53_hosted_zone_name`                               | bare domain, no scheme or trailing dot                                                                               |
@@ -83,17 +70,11 @@ full control model and the per-sink fields are in
 | `client_vpn_cidr`                                        | `""`, or an IPv4 CIDR of `/22` or larger — not checked at all when `public_link = true`                              |
 | `cloudwatch_audit_log_retention_days`                    | a retention value CloudWatch allows                                                                                  |
 | `cloudwatch_audit_log_group_name`                        | `""`, or up to 512 characters from `[-A-Za-z0-9_./#]`                                                                |
-| `audit_log_sink_count`                                   | `1`                                                                                                                  |
-| `audit_log_datadog.region`                               | `us1` / `us3` / `us5` / `eu1` / `ap1` / `us1-fed`                                                                    |
-| `audit_log_newrelic.region`                              | `US` / `EU`                                                                                                          |
-| `audit_log_{elasticsearch,grafana,splunk,http}` endpoint | a URL                                                                                                                |
-| `audit_log_http.method` / `.codec`                       | `POST` or `PUT` / `json` or `ndjson`                                                                                 |
-| `audit_log_cloudwatch`                                   | `access_key_id` and `secret_access_key` set together, or neither                                                     |
 
 Cross-field rules, also checked at plan time:
 
 - `create_cluster = true` needs `vault_tier`. `create_cluster = false` needs
-  `vault_tier = ""`, `min_vault_version = null`, and every audit input off.
+  `vault_tier = ""`, `min_vault_version = null`, and `audit_log_enabled = false`.
 - `create_hvn_peering = true` needs `existing_hvn_peering_id = ""`.
 - `manage_peering_routes = true` needs `hcp_organization_id` set and a current
   `HCP_API_TOKEN` plus `HCP_API_ADDRESS` (HCP API host, no scheme) exported in
@@ -109,8 +90,8 @@ Cross-field rules, also checked at plan time:
   format-checked, and any networking input that is set only raises a
   non-blocking warning. A leftover `REPLACE_WITH_…` placeholder in those three
   does not fail the plan.
-- Audit logging on needs exactly one destination: managed CloudWatch, or one
-  `audit_log_<vendor>` object.
+- Audit logging (`audit_log_enabled = true`) can only be configured on a cluster
+  this configuration creates (`create_cluster = true`).
 
 ## Networking enablement
 

@@ -19,47 +19,15 @@ resource "hcp_vault_cluster" "this" {
     }
   }
 
-  # Fed by the cloudwatch-audit-log module, or (for external sinks) the
-  # vault-audit-log module. Both may emit a sparse map, so read every attribute
-  # through try(..., null).
+  # Fed by the cloudwatch-audit-log module: a single-element list carrying the
+  # four cloudwatch_* attributes, or [] when audit logging is off.
   dynamic "audit_log_config" {
     for_each = var.audit_log_config
     content {
-      cloudwatch_access_key_id     = try(audit_log_config.value.cloudwatch_access_key_id, null)
-      cloudwatch_group_name        = try(audit_log_config.value.cloudwatch_group_name, null)
-      cloudwatch_region            = try(audit_log_config.value.cloudwatch_region, null)
-      cloudwatch_secret_access_key = try(audit_log_config.value.cloudwatch_secret_access_key, null)
-      cloudwatch_stream_name       = try(audit_log_config.value.cloudwatch_stream_name, null)
-
-      datadog_api_key = try(audit_log_config.value.datadog_api_key, null)
-      datadog_region  = try(audit_log_config.value.datadog_region, null)
-
-      elasticsearch_dataset  = try(audit_log_config.value.elasticsearch_dataset, null)
-      elasticsearch_endpoint = try(audit_log_config.value.elasticsearch_endpoint, null)
-      elasticsearch_password = try(audit_log_config.value.elasticsearch_password, null)
-      elasticsearch_user     = try(audit_log_config.value.elasticsearch_user, null)
-
-      grafana_endpoint = try(audit_log_config.value.grafana_endpoint, null)
-      grafana_password = try(audit_log_config.value.grafana_password, null)
-      grafana_user     = try(audit_log_config.value.grafana_user, null)
-
-      http_basic_password = try(audit_log_config.value.http_basic_password, null)
-      http_basic_user     = try(audit_log_config.value.http_basic_user, null)
-      http_bearer_token   = try(audit_log_config.value.http_bearer_token, null)
-      http_codec          = try(audit_log_config.value.http_codec, null)
-      http_compression    = try(audit_log_config.value.http_compression, null)
-      http_headers        = try(audit_log_config.value.http_headers, null)
-      http_method         = try(audit_log_config.value.http_method, null)
-      http_payload_prefix = try(audit_log_config.value.http_payload_prefix, null)
-      http_payload_suffix = try(audit_log_config.value.http_payload_suffix, null)
-      http_uri            = try(audit_log_config.value.http_uri, null)
-
-      newrelic_account_id  = try(audit_log_config.value.newrelic_account_id, null)
-      newrelic_license_key = try(audit_log_config.value.newrelic_license_key, null)
-      newrelic_region      = try(audit_log_config.value.newrelic_region, null)
-
-      splunk_hecendpoint = try(audit_log_config.value.splunk_hecendpoint, null)
-      splunk_token       = try(audit_log_config.value.splunk_token, null)
+      cloudwatch_access_key_id     = audit_log_config.value.cloudwatch_access_key_id
+      cloudwatch_group_name        = audit_log_config.value.cloudwatch_group_name
+      cloudwatch_region            = audit_log_config.value.cloudwatch_region
+      cloudwatch_secret_access_key = audit_log_config.value.cloudwatch_secret_access_key
     }
   }
 }

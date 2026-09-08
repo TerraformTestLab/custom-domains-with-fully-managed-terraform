@@ -35,22 +35,22 @@ output "vault_target_hostname" {
 }
 
 output "audit_log_enabled" {
-  description = "Whether any Vault audit-log streaming is active."
-  value       = module.cloudwatch_audit_log.enabled || module.vault_audit_log.enabled
+  description = "Whether Vault audit-log streaming to CloudWatch is active."
+  value       = module.cloudwatch_audit_log.enabled
 }
 
 output "audit_log_destination" {
-  description = "Active audit-log destination: \"cloudwatch\" (AWS-native module), the external sink name, or \"\"."
-  value       = module.cloudwatch_audit_log.enabled ? "cloudwatch" : module.vault_audit_log.destination
+  description = "Active audit-log destination: \"cloudwatch\" when streaming is on, otherwise \"\"."
+  value       = module.cloudwatch_audit_log.enabled ? "cloudwatch" : ""
 }
 
 output "audit_log_cloudwatch_group_name" {
-  description = "CloudWatch log group receiving the audit stream (null unless the AWS-native module is enabled)."
+  description = "CloudWatch log group receiving the audit stream (null unless audit logging is enabled)."
   value       = module.cloudwatch_audit_log.log_group_name
 }
 
 output "audit_log_cloudwatch_iam_user" {
-  description = "Dedicated IAM user HCP uses to write to CloudWatch (null unless the AWS-native module is enabled)."
+  description = "Dedicated IAM user HCP uses to write to CloudWatch (null unless audit logging is enabled)."
   value       = module.cloudwatch_audit_log.iam_user_name
 }
 

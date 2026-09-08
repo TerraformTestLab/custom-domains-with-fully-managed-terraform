@@ -53,7 +53,7 @@ Work through the steps in order. Each links to its own guide.
   a peering established outside this configuration.
 - An AWS Client VPN with self-signed mTLS certificates, so a workstation can
   reach a private cluster over `laptop → Client VPN → VPC → peering → HVN`.
-- Optional Vault audit-log streaming to CloudWatch or an external SIEM.
+- Optional Vault audit-log streaming to a Terraform-managed CloudWatch log group.
 
 ### Networking is a conscious choice
 
@@ -67,7 +67,7 @@ values.
 ### Modules
 
 `vault-cluster`, `vault-custom-domain-records`, `vault-hvn-peering`,
-`vault-aws-client-vpn`, `cloudwatch-audit-log`, and `vault-audit-log`. See
+`vault-aws-client-vpn`, and `cloudwatch-audit-log`. See
 [Modules.md](docs/Modules.md) for what each one does.
 
 ### Inputs and outputs
