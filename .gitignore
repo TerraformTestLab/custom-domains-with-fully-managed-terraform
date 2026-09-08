@@ -33,3 +33,4 @@ override.tf.json
 *-response.json
 *-vpn.ovpn
 .DS_Store
+.vscode
