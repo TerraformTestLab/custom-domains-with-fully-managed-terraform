@@ -31,3 +31,5 @@ override.tf.json
 *_override.tf.json
 *.txt
 *-response.json
+*-vpn.ovpn
+.DS_Store

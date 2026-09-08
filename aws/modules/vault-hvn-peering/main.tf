@@ -67,7 +67,7 @@ locals {
 locals {
   # hcp_api_address / hcp_api_token carry the HCP API host and bearer token for
   # the plan-time route read. The root sources both from the environment
-  # (HCP_API_ADDRESS / HCP_API_TOKEN) and asserts they are set - this module
+  # (HCP_API_HOST / HCP_API_TOKEN) and asserts they are set - this module
   # only consumes them.
   #
   # The HVN-route lookup can run only once its inputs are all present. Until then
@@ -152,7 +152,7 @@ resource "terraform_data" "validations" {
 
     precondition {
       condition     = !local.routes_lookup_ready || data.http.hvn_routes[0].status_code == 200
-      error_message = "vault-hvn-peering: reading HVN routes from HCP returned HTTP ${try(data.http.hvn_routes[0].status_code, 0)}. 401 or 403 - HCP_API_TOKEN is missing or expired, run 'hcp auth login' and re-export it. 404 - check HCP_API_ADDRESS, hcp_organization_id, hcp_project_id and hvn_id."
+      error_message = "vault-hvn-peering: reading HVN routes from HCP returned HTTP ${try(data.http.hvn_routes[0].status_code, 0)}. 401 or 403 - HCP_API_TOKEN is missing or expired, run 'hcp auth login' and re-export it. 404 - check HCP_API_HOST, hcp_organization_id, hcp_project_id and hvn_id."
     }
 
     # A route that already exists for a VPC CIDR / to the HVN CIDR but points

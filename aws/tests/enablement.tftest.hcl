@@ -75,7 +75,7 @@ mock_provider "http" {
   }
 }
 
-# The root reads HCP_API_ADDRESS / HCP_API_TOKEN from the environment through
+# The root reads HCP_API_HOST / HCP_API_TOKEN from the environment through
 # these and injects them into vault-hvn-peering; the mock makes both non-empty so
 # terraform_data.peering_routes_preflight passes unless a run overrides it.
 mock_provider "external" {
@@ -478,7 +478,7 @@ run "peering_manage_routes_requires_hcp_api_token" {
   ]
 }
 
-# manage_peering_routes = true but HCP_API_ADDRESS is empty in the environment.
+# manage_peering_routes = true but HCP_API_HOST is empty in the environment.
 run "peering_manage_routes_requires_hcp_api_address" {
   command = plan
   variables {

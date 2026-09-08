@@ -156,15 +156,18 @@ resource "terraform_data" "audit_preflight" {
 #
 # manage_peering_routes = true has vault-hvn-peering read the HVN's existing
 # routes from the HCP API during plan. That read needs the API host and a bearer
-# token; both come from the environment (HCP_API_ADDRESS / HCP_API_TOKEN), never
+# token; both come from the environment (HCP_API_HOST / HCP_API_TOKEN), never
 # a variable or state, and are injected into the module. The token is held as a
 # sensitive value; only the "is it empty" check is unwrapped, for the
 # precondition and the module's count guard. The preconditions fail the plan
 # early - with the exact export to run - when either is missing.
+#
+# The data source and the local below keep the older hcp_api_address name; the
+# environment variable they read is HCP_API_HOST.
 ###############################################################################
 data "external" "hcp_api_address" {
   count   = local.peering_routes_managed ? 1 : 0
-  program = ["bash", "-c", "printf '{\"value\":\"%s\"}' \"$${HCP_API_ADDRESS:-}\""]
+  program = ["bash", "-c", "printf '{\"value\":\"%s\"}' \"$${HCP_API_HOST:-}\""]
 }
 
 data "external" "hcp_api_token" {
@@ -184,7 +187,7 @@ resource "terraform_data" "peering_routes_preflight" {
     # so exactly one message fires: first "set hcp_organization_id", then these.
     precondition {
       condition     = !local.peering_routes_managed || var.hcp_organization_id == "" || local.hcp_api_address != ""
-      error_message = "HCP_API_ADDRESS must be exported (non-empty, HCP API host with no scheme) when manage_peering_routes = true - vault-hvn-peering reads the HVN's existing routes from that host at plan time. Run: export HCP_API_ADDRESS=\"api.hcp.to\" then re-run terraform plan."
+      error_message = "HCP_API_HOST must be exported (non-empty, HCP API host with no scheme) when manage_peering_routes = true - vault-hvn-peering reads the HVN's existing routes from that host at plan time. Run: export HCP_API_HOST=\"<your environment specific api host value>\" then re-run terraform plan."
     }
     precondition {
       condition     = !local.peering_routes_managed || var.hcp_organization_id == "" || nonsensitive(local.hcp_api_token != "")
