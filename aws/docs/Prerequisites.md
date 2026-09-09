@@ -53,7 +53,6 @@ done
 The configuration works with a fixed set of resources: an HCP project and HVN, a
 Route 53 hosted zone, a Vault cluster, an AWS VPC and subnet, and an HVN peering
 with its routes. Each one is either supplied by you as an existing resource or
-created by Terraform; the optional CloudWatch audit-log destination is always
 created by Terraform. The three tables below group the `terraform.tfvars`
 variables by which case applies.
 
@@ -93,7 +92,6 @@ None of them is a portal lookup.
 | `create_hvn_peering`           | `true`    | The HVN ⇄ VPC peering connection and its AWS-side accepter. `existing_hvn_peering_id` must stay empty                                                                                                                                             |
 | `manage_peering_routes`        | `true`    | The route to the HVN CIDR on the AWS side and the route to the VPC CIDR on the HVN side, whether the peering was created or adopted                                                                                                               |
 | `enable_vpn`                   | `true`    | The AWS Client VPN endpoint, its mTLS certificates, and the `.ovpn` profile. Needs `vpc_id` and `subnet_id` (first table), plus a `client_vpn_cidr` you choose: a private IPv4 block of `/22` or larger that does not overlap the VPC or HVN CIDR |
-| `audit_log_enabled`            | `true`    | A CloudWatch log group, a dedicated least-privilege IAM user, and an access key; the cluster's audit log is streamed to it. Only applied to a cluster this config creates                                                                          |
 
 ### Optionally folded in as an existing resource
 

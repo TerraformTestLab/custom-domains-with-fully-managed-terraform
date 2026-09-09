@@ -77,7 +77,7 @@ variable "cluster_id" {
 }
 
 variable "create_cluster" {
-  description = "true -> Terraform creates the cluster (vault_tier is then required). false -> adopt an existing cluster with this cluster_id (vault_tier, min_vault_version and audit logging must then be left at defaults / off)."
+  description = "true -> Terraform creates the cluster (vault_tier is then required). false -> adopt an existing cluster with this cluster_id (vault_tier and min_vault_version must then be left at defaults)."
   type        = bool
   default     = false
 }
@@ -107,46 +107,6 @@ variable "min_vault_version" {
   validation {
     condition     = var.min_vault_version == null || can(regex("^v\\d+\\.\\d+\\.\\d+$", var.min_vault_version))
     error_message = "min_vault_version must look like \"v1.19.0\" or be null."
-  }
-}
-
-###############################################################################
-# Vault audit log streaming
-#
-#   audit_log_enabled = false -> no audit logging; nothing else here matters.
-#   audit_log_enabled = true  -> Terraform creates + manages the CloudWatch
-#                                destination (log group + dedicated IAM user/key)
-#                                and streams the cluster's audit log to it.
-#
-#   Enforced by a precondition in the vault-cluster module: audit logging can
-#   only be configured on a cluster this configuration creates.
-###############################################################################
-
-variable "audit_log_enabled" {
-  description = "Master switch for Vault audit-log streaming to a Terraform-managed CloudWatch destination. false -> no audit_log_config on the cluster."
-  type        = bool
-  default     = false
-}
-
-variable "cloudwatch_audit_log_group_name" {
-  description = "Override the CloudWatch log group name. Empty derives \"/hcp/vault/<cluster_id>/audit\"."
-  type        = string
-  default     = ""
-
-  validation {
-    condition     = var.cloudwatch_audit_log_group_name == "" || can(regex("^[-A-Za-z0-9_./#]{1,512}$", var.cloudwatch_audit_log_group_name))
-    error_message = "cloudwatch_audit_log_group_name has invalid characters or exceeds 512 chars."
-  }
-}
-
-variable "cloudwatch_audit_log_retention_days" {
-  description = "Retention for the CloudWatch audit log group in days. 0 = keep forever."
-  type        = number
-  default     = 30
-
-  validation {
-    condition     = contains([0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653], var.cloudwatch_audit_log_retention_days)
-    error_message = "cloudwatch_audit_log_retention_days must be a CloudWatch-allowed value: 0,1,3,5,7,14,30,60,90,120,150,180,365,400,545,731,1096,1827,2192,2557,2922,3288,3653."
   }
 }
 

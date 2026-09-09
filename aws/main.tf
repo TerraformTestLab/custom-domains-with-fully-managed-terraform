@@ -35,9 +35,6 @@ locals {
   # value it carries - including a leftover placeholder - is ignored).
   hvn_cidr = data.hcp_hvn.check.cidr_block
   vpc_cidr = local.is_private_endpoint && var.vpc_id != "" ? data.aws_vpc.check[0].cidr_block : ""
-
-  # Audit logging - Terraform-managed CloudWatch is the only destination.
-  audit_log_config = module.cloudwatch_audit_log.config
 }
 
 ###############################################################################
@@ -69,19 +66,6 @@ data "aws_subnet" "check" {
       error_message = "subnet_id ${var.subnet_id} belongs to VPC ${self.vpc_id}, not vpc_id ${var.vpc_id}."
     }
   }
-}
-
-###############################################################################
-# Audit log module
-###############################################################################
-module "cloudwatch_audit_log" {
-  source = "./modules/cloudwatch-audit-log"
-
-  audit_log_enabled = var.audit_log_enabled
-  cluster_id        = var.cluster_id
-  aws_region        = var.aws_region
-  log_group_name    = var.cloudwatch_audit_log_group_name
-  retention_in_days = var.cloudwatch_audit_log_retention_days
 }
 
 ###############################################################################
@@ -225,8 +209,6 @@ module "vault_cluster" {
   public_link       = local._public_link
   tier              = var.vault_tier
   min_vault_version = var.min_vault_version
-  audit_log_enabled = var.audit_log_enabled
-  audit_log_config  = local.audit_log_config
 }
 
 module "vault_custom_domain_records" {

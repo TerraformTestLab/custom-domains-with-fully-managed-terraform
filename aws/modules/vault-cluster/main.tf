@@ -18,18 +18,6 @@ resource "hcp_vault_cluster" "this" {
       error_message = "vault-cluster: create_cluster = true requires tier to be set (e.g. \"dev\", \"standard_small\")."
     }
   }
-
-  # Fed by the cloudwatch-audit-log module: a single-element list carrying the
-  # four cloudwatch_* attributes, or [] when audit logging is off.
-  dynamic "audit_log_config" {
-    for_each = var.audit_log_config
-    content {
-      cloudwatch_access_key_id     = audit_log_config.value.cloudwatch_access_key_id
-      cloudwatch_group_name        = audit_log_config.value.cloudwatch_group_name
-      cloudwatch_region            = audit_log_config.value.cloudwatch_region
-      cloudwatch_secret_access_key = audit_log_config.value.cloudwatch_secret_access_key
-    }
-  }
 }
 
 # Or adopt an existing one.
@@ -41,10 +29,6 @@ data "hcp_vault_cluster" "existing" {
   # Creation-only inputs must not be set while adopting - a data source can only
   # read, so any of these would silently do nothing.
   lifecycle {
-    precondition {
-      condition     = !var.audit_log_enabled && length(var.audit_log_config) == 0
-      error_message = "vault-cluster: create_cluster = false but audit logging is requested (audit_log_enabled = true or audit_log_config set). Audit logging can only be configured on a cluster this module creates."
-    }
     precondition {
       condition     = var.tier == "" && var.min_vault_version == null
       error_message = "vault-cluster: create_cluster = false but tier / min_vault_version are set. They don't apply to an adopted cluster - leave them empty / null."

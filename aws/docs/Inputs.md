@@ -30,26 +30,10 @@ from is in [Prerequisites.md](Prerequisites.md#resource-dependencies).
 | `vpc_id`                       | `""`    | Existing VPC. Required when the Client VPN or a peering is active. Ignored, and not format-checked, when `public_link = true`.                                                                                    |
 | `subnet_id`                    | `""`    | Private subnet inside `vpc_id`. Required alongside `vpc_id`. Ignored, and not format-checked, when `public_link = true`.                                                                                          |
 | `client_vpn_cidr`              | `""`    | Address pool for VPN clients — a private block of `/22` or larger that does not overlap the VPC or HVN range. Required when the Client VPN is active. Ignored, and not format-checked, when `public_link = true`. |
-| `audit_log_enabled`            | `false` | Master switch for audit-log streaming to a Terraform-managed CloudWatch destination. See [Audit-log inputs](#audit-log-inputs).                                                                                    |
 
 `public_link`, `enable_vpn`, `create_hvn_peering`, and `manage_peering_routes`
 have no default. The plan fails until each one that applies is set; a public
 cluster needs only `public_link`. See [Networking enablement](#networking-enablement).
-
-## Audit-log inputs
-
-Consulted only when `audit_log_enabled = true`. Terraform then creates the
-CloudWatch log group, a dedicated least-privilege IAM user, and an access key,
-and streams the cluster's audit log to it.
-
-| Variable                              | Default | Purpose                                                               |
-|---------------------------------------|---------|-----------------------------------------------------------------------|
-| `cloudwatch_audit_log_group_name`     | `""`    | Managed log group name. `""` derives `/hcp/vault/<cluster_id>/audit`. |
-| `cloudwatch_audit_log_retention_days` | `30`    | Retention in days for the managed log group; `0` keeps forever.       |
-
-Audit configuration applies only to a cluster this configuration creates. The
-full control model is in
-[Optional-Reading.md](Optional-Reading.md#audit-logging-configuration).
 
 ## Validation
 
@@ -68,13 +52,11 @@ full control model is in
 | `vpc_id` / `subnet_id`                                   | `""` or the matching `vpc-` / `subnet-` ID — not checked at all when `public_link = true`                            |
 | `hvn_route_table_ids[*]`                                 | a `rtb-` ID                                                                                                          |
 | `client_vpn_cidr`                                        | `""`, or an IPv4 CIDR of `/22` or larger — not checked at all when `public_link = true`                              |
-| `cloudwatch_audit_log_retention_days`                    | a retention value CloudWatch allows                                                                                  |
-| `cloudwatch_audit_log_group_name`                        | `""`, or up to 512 characters from `[-A-Za-z0-9_./#]`                                                                |
 
 Cross-field rules, also checked at plan time:
 
 - `create_cluster = true` needs `vault_tier`. `create_cluster = false` needs
-  `vault_tier = ""`, `min_vault_version = null`, and `audit_log_enabled = false`.
+  `vault_tier = ""` and `min_vault_version = null`.
 - `create_hvn_peering = true` needs `existing_hvn_peering_id = ""`.
 - `manage_peering_routes = true` needs `hcp_organization_id` set and a current
   `HCP_API_TOKEN` plus `HCP_API_ADDRESS` (HCP API host, no scheme) exported in
@@ -90,8 +72,6 @@ Cross-field rules, also checked at plan time:
   format-checked, and any networking input that is set only raises a
   non-blocking warning. A leftover `REPLACE_WITH_…` placeholder in those three
   does not fail the plan.
-- Audit logging (`audit_log_enabled = true`) can only be configured on a cluster
-  this configuration creates (`create_cluster = true`).
 
 ## Networking enablement
 
