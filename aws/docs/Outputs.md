@@ -55,12 +55,3 @@ All `null` unless `enable_vpn = true`.
 | `ovpn_file_path`        | string / null | Path of the generated `.ovpn` profile             |
 | `ovpn_file_content`     | string / null | Raw contents of the `.ovpn` profile (sensitive)   |
 | `usage_instructions`    | string / null | How to save the profile, connect, and reach Vault |
-
-## Audit logging
-
-| Output                            | Type          | Description                                                                                |
-|-----------------------------------|---------------|--------------------------------------------------------------------------------------------|
-| `audit_log_enabled`               | bool          | Audit-log streaming to CloudWatch is active                                   |
-| `audit_log_destination`           | string        | `cloudwatch` when streaming is on, otherwise `""`                             |
-| `audit_log_cloudwatch_group_name` | string / null | CloudWatch log group receiving the stream; `null` when audit logging is off   |
-| `audit_log_cloudwatch_iam_user`   | string / null | IAM user HCP uses to write to CloudWatch; `null` when audit logging is off    |

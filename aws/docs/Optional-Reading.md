@@ -22,7 +22,6 @@ flowchart TB
     IN_G["aws_region *, hcp_project_id *"]
     IN_D["route53_hosted_zone_name *, vault_record_name *"]
     IN_C["cluster_id *, hvn_id *, create_cluster<br/>public_link *, vault_tier, min_vault_version"]
-    IN_AUD["audit_log_enabled (master)<br/>cloudwatch_audit_log_group_name, cloudwatch_audit_log_retention_days"]
     IN_N["vpc_id, subnet_id, client_vpn_cidr, enable_vpn *"]
     IN_P["create_hvn_peering *, existing_hvn_peering_id<br/>manage_peering_routes *, hvn_route_table_ids"]
   end
@@ -31,22 +30,20 @@ flowchart TB
   PRE{{"terraform_data.root_preflight — required-var guards<br/>public_link / enable_vpn / create_hvn_peering / manage_peering_routes"}}
   GATE{{"root locals<br/>enable_vpn = private AND enable_vpn<br/>manage_peering = private AND (create_hvn_peering OR existing_hvn_peering_id)"}}
 
-  MCW["cloudwatch-audit-log — OPTIONAL<br/>count = audit_log_enabled<br/>creates: log group + IAM user + access key + policy<br/>builds the audit_log_config payload<br/>in *: cluster_id, aws_region"]
   MC["vault-cluster — MANDATORY<br/>create_cluster ? hcp_vault_cluster : data.hcp_vault_cluster<br/>in *: cluster_id, hvn_id"]
   MR["vault-custom-domain-records — MANDATORY<br/>Route53 CNAME plus acme-challenge CNAME<br/>in *: route53_hosted_zone_name, vault_record_name, vault_target_hostname"]
   MP["vault-hvn-peering — OPTIONAL<br/>count = manage_peering ? 1 : 0 (private AND create-or-adopt)<br/>self-validates: vpc/subnet present, create XOR adopt, VPC/HVN non-overlap<br/>in *: hvn_id, vpc_id, subnet_id, peer_vpc_region"]
   MV["vault-aws-client-vpn — OPTIONAL<br/>count = enable_vpn ? 1 : 0 (private AND opted in)<br/>self-validates: vpc/subnet/client_cidr present, client/VPC/HVN non-overlap<br/>in *: vpc_id, subnet_id, vpc_cidr, hvn_cidr, client_vpn_cidr"]
 
   OC["outputs: vault_cluster_id, vault_cluster_created, vault_cluster_tier, vault_version<br/>vault_private_endpoint_url, vault_public_endpoint_url, vault_target_hostname"]
-  OA["outputs: audit_log_enabled, audit_log_destination<br/>audit_log_cloudwatch_group_name, audit_log_cloudwatch_iam_user"]
   OR["outputs: vault_cname_fqdn, vault_challenge_cname_fqdn"]
   OG["outputs: is_private_endpoint, is_public_endpoint, hvn_cidr, vpc_cidr"]
   OP["outputs: hvn_peering_enabled, hvn_peering_created, hcp_peering_id<br/>aws_peering_connection_id, hvn_peering_state<br/>hvn_peering_hvn_route_ids, hvn_peering_aws_route_table_ids"]
   OV["outputs: vpn_enabled, vpn_endpoint_id, vpn_endpoint_dns_name<br/>ovpn_file_path, ovpn_file_content, usage_instructions"]
 
   class MC,MR mand
-  class MCW,MP,MV opt
-  class OC,OA,OR,OG,OP,OV io
+  class MP,MV opt
+  class OC,OR,OG,OP,OV io
   class GATE gate
   class CHK,PRE guard
 
@@ -54,9 +51,6 @@ flowchart TB
   IN_C -->|hvn_id| CHK
   IN_N -->|vpc_id, subnet_id| CHK
 
-  IN_AUD --> MCW
-  IN_C -->|cluster_id| MCW
-  IN_G -->|aws_region| MCW
   IN_C --> MC
   IN_C --> GATE
   IN_N -.->|enable_vpn| GATE
@@ -74,7 +68,6 @@ flowchart TB
   CHK -->|hvn_cidr, vpc_cidr| MV
   GATE --> PRE
 
-  MCW -->|audit_log_config| MC
   MC -->|vault_target_hostname| MR
   GATE -.->|enables count| MP
   GATE -.->|enables count| MV
@@ -82,7 +75,6 @@ flowchart TB
   MP -.->|depends_on| MV
 
   MC --> OC
-  MCW --> OA
   MR --> OR
   GATE --> OG
   CHK --> OG
@@ -125,49 +117,3 @@ Key points:
 
 The full input-to-outcome matrix is in
 [Networking enablement](Inputs.md#networking-enablement).
-
-## Audit logging configuration
-
-One switch in `terraform.tfvars`. `audit_log_enabled` turns audit logging on or
-off; when on, Terraform creates a CloudWatch log group and streams the cluster's
-audit log to it. `cloudwatch_audit_log_group_name` and
-`cloudwatch_audit_log_retention_days` tune the log group.
-
-| `audit_log_enabled` | `create_cluster` | Result |
-|:---:|:---:|---|
-| `false` | any | No audit logging; the two `cloudwatch_audit_log_*` tuning values are ignored |
-| `true` | `true` | Terraform creates the CloudWatch log group, a dedicated IAM user and access key, and streams to it |
-| `true` | `false` | Plan fails — audit configuration cannot be pushed to an adopted cluster |
-
-### What each module builds
-
-- **`cloudwatch-audit-log`** creates a log group (`/hcp/vault/<cluster_id>/audit`
-  by default), a dedicated IAM user with a one-log-group policy, and an access
-  key. Its output is the `audit_log_config` payload HCP needs.
-- **`vault-cluster`** splices that payload into the cluster's `audit_log_config`
-  block.
-
-### Design notes
-
-- CloudWatch is the only destination because it is the only sink Terraform can
-  build end to end with the `aws` provider already in use; every other HCP audit
-  sink (Datadog, Splunk, Elasticsearch, Grafana, New Relic, generic HTTP) needs
-  an external account and an API token the operator would have to supply.
-- HCP's CloudWatch integration accepts only a static access key, so the module
-  issues one; the blast radius is a dedicated user scoped to a single log group.
-
-### Turning it on or off
-
-Enabling audit logging on an existing cluster is an in-place update; the cluster
-is not rebuilt. Disabling it removes the block and destroys the log group, IAM
-user, and key. Audit configuration applies only to a cluster this configuration
-creates.
-
-### Security note
-
-The CloudWatch path writes an IAM secret access key into Terraform state and
-sends it to HCP; this is intrinsic to HCP's integration. The key belongs to a
-dedicated user with a one-log-group policy, and rotating it is a single
-`terraform apply -replace=…`. Protect state accordingly: with the local backend,
-keep `terraform.tfstate` out of version control and off shared disks; HCP
-Terraform stores it encrypted.

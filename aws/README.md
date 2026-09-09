@@ -2,10 +2,10 @@
 
 Provisions the full stack for serving an HCP Vault cluster's API on a custom
 domain: the cluster (created or adopted), the Route 53 records, the HVN ⇄ VPC
-peering and routes, an AWS Client VPN for private clusters, and optional
-audit-log streaming. Terraform completes the required configuration that 
-prepares the cluster for custom domain enablement; a separate HCP API call 
-turns the custom domain on and triggers certificate issuance.
+peering and routes, and an AWS Client VPN for private clusters. Terraform
+completes the required configuration that prepares the cluster for custom domain
+enablement; a separate HCP API call turns the custom domain on and triggers
+certificate issuance.
 
 ## Quick start
 
@@ -53,7 +53,6 @@ Work through the steps in order. Each links to its own guide.
   a peering established outside this configuration.
 - An AWS Client VPN with self-signed mTLS certificates, so a workstation can
   reach a private cluster over `laptop → Client VPN → VPC → peering → HVN`.
-- Optional Vault audit-log streaming to a Terraform-managed CloudWatch log group.
 
 ### Networking is a conscious choice
 
@@ -66,9 +65,8 @@ values.
 
 ### Modules
 
-`vault-cluster`, `vault-custom-domain-records`, `vault-hvn-peering`,
-`vault-aws-client-vpn`, and `cloudwatch-audit-log`. See
-[Modules.md](docs/Modules.md) for what each one does.
+`vault-cluster`, `vault-custom-domain-records`, `vault-hvn-peering`, and
+`vault-aws-client-vpn`. See [Modules.md](docs/Modules.md) for what each one does.
 
 ### Inputs and outputs
 
@@ -78,5 +76,4 @@ means is in [Outputs.md](docs/Outputs.md).
 
 ### Further reading
 
-[Optional-Reading.md](docs/Optional-Reading.md) covers the module wiring diagram
-and the full audit-logging control model.
+[Optional-Reading.md](docs/Optional-Reading.md) covers the module wiring diagram.

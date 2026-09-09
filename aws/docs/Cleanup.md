@@ -52,7 +52,6 @@ Destroyed, depending on what you enabled:
 | The HVN ⇄ VPC peering and its AWS-side acceptance | `create_hvn_peering = true` |
 | The peering routes on both sides | a peering is managed and `manage_peering_routes = true` |
 | The Vault cluster | `create_cluster = true` |
-| The CloudWatch log group, IAM user, and key | `audit_log_enabled = true` |
 
 Never touched: the HVN, the VPC and subnet, an adopted cluster or peering, and
 any route you added by hand.

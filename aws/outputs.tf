@@ -34,26 +34,6 @@ output "vault_target_hostname" {
   value       = local.vault_target_hostname
 }
 
-output "audit_log_enabled" {
-  description = "Whether Vault audit-log streaming to CloudWatch is active."
-  value       = module.cloudwatch_audit_log.enabled
-}
-
-output "audit_log_destination" {
-  description = "Active audit-log destination: \"cloudwatch\" when streaming is on, otherwise \"\"."
-  value       = module.cloudwatch_audit_log.enabled ? "cloudwatch" : ""
-}
-
-output "audit_log_cloudwatch_group_name" {
-  description = "CloudWatch log group receiving the audit stream (null unless audit logging is enabled)."
-  value       = module.cloudwatch_audit_log.log_group_name
-}
-
-output "audit_log_cloudwatch_iam_user" {
-  description = "Dedicated IAM user HCP uses to write to CloudWatch (null unless audit logging is enabled)."
-  value       = module.cloudwatch_audit_log.iam_user_name
-}
-
 output "vault_cname_fqdn" {
   description = "FQDN of the Vault CNAME record."
   value       = module.vault_custom_domain_records.vault_cname_fqdn

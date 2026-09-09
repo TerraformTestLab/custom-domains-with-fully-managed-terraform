@@ -9,7 +9,7 @@ variable "cluster_id" {
 }
 
 variable "create_cluster" {
-  description = "true -> create the cluster. false -> adopt (read) an existing cluster with this cluster_id; creation-only inputs (tier, min_vault_version, audit_log_config) must be left at their defaults."
+  description = "true -> create the cluster. false -> adopt (read) an existing cluster with this cluster_id; creation-only inputs (tier, min_vault_version) must be left at their defaults."
   type        = bool
   default     = true
 }
@@ -50,22 +50,4 @@ variable "min_vault_version" {
     condition     = var.min_vault_version == null || can(regex("^v\\d+\\.\\d+\\.\\d+$", var.min_vault_version))
     error_message = "min_vault_version must look like \"v1.19.0\" or be null."
   }
-}
-
-variable "audit_log_enabled" {
-  description = "The root audit_log_enabled master switch. Used only to produce a clear error when audit logging is requested on an adopted cluster (create_cluster = false)."
-  type        = bool
-  default     = false
-}
-
-variable "audit_log_config" {
-  description = "audit_log_config block payload from the cloudwatch-audit-log module: a single-element list of cloudwatch_* attributes, or []. Only applied when create_cluster is true."
-  type = list(object({
-    cloudwatch_access_key_id     = string
-    cloudwatch_group_name        = string
-    cloudwatch_region            = string
-    cloudwatch_secret_access_key = string
-  }))
-  default   = []
-  sensitive = true
 }
